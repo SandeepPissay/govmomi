@@ -427,13 +427,29 @@ func (c *Client) do(ctx context.Context, req *http.Request) (*http.Response, err
 	return c.Client.Do(req.WithContext(ctx))
 }
 
+type headerContext struct{}
+
+func (c *Client) HeaderContext(ctx context.Context, header interface{}) context.Context {
+	return context.WithValue(ctx, headerContext{}, header)
+}
+
+type actionContext struct{}
+
+func (c *Client) ActionContext(ctx context.Context, action string) context.Context {
+	return context.WithValue(ctx, actionContext{}, action)
+}
+
 func (c *Client) RoundTrip(ctx context.Context, reqBody, resBody HasFault) error {
 	var err error
 
 	reqEnv := Envelope{Body: reqBody}
 	resEnv := Envelope{Body: resBody}
 
-	reqEnv.Header = c.header
+	if header, ok := ctx.Value(headerContext{}).(interface{}); ok {
+		reqEnv.Header = header
+	} else {
+		reqEnv.Header = c.header
+	}
 
 	// Create debugging context for this round trip
 	d := c.d.newRoundTrip()
@@ -453,8 +469,15 @@ func (c *Client) RoundTrip(ctx context.Context, reqBody, resBody HasFault) error
 	}
 
 	req.Header.Set(`Content-Type`, `text/xml; charset="utf-8"`)
-	soapAction := fmt.Sprintf("%s/%s", c.Namespace, c.Version)
-	req.Header.Set(`SOAPAction`, soapAction)
+
+	var action string
+	if soapAction, ok := ctx.Value(actionContext{}).(string); ok {
+		action = soapAction
+	} else {
+		action = fmt.Sprintf("%s/%s", c.Namespace, c.Version)
+	}
+	req.Header.Set(`SOAPAction`, action)
+
 	if c.UserAgent != "" {
 		req.Header.Set(`User-Agent`, c.UserAgent)
 	}
