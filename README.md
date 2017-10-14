@@ -5,14 +5,66 @@
 
 A Go library for interacting with VMware vSphere APIs (ESXi and/or vCenter).
 
-For `govc`, a CLI built on top of govmomi, check out the [govc](./govc) directory and [USAGE](./govc/USAGE.md) document.
+## Components
+
+### vSphere client sdk - [vim25](https://godoc.org/github.com/vmware/govmomi/vim25)
+
+In addition to the generated sdk code, govmomi provides higher level APIs on top, making complex (but common) tasks
+simpler.  These include:
+
+- [Session management](https://godoc.org/github.com/vmware/govmomi/session)
+
+- [Inventory navigation](https://godoc.org/github.com/vmware/govmomi/find)
+
+- [Performance metrics](https://godoc.org/github.com/vmware/govmomi/performance)
+
+- [Events](https://godoc.org/github.com/vmware/govmomi/event)
+
+- [Tasks](https://godoc.org/github.com/vmware/govmomi/task)
+
+- [Logs](https://godoc.org/github.com/vmware/govmomi/object#DiagnosticLog)
+
+- [Property collection](https://godoc.org/github.com/vmware/govmomi/property)
+
+- [Virtual devices](https://godoc.org/github.com/vmware/govmomi/object#VirtualDeviceList)
+
+- [License management](https://godoc.org/github.com/vmware/govmomi/license)
+
+- [Firewall configuration](https://godoc.org/github.com/vmware/govmomi/object#HostFirewallRulesetList)
+
+- [Guest operations](https://godoc.org/github.com/vmware/govmomi/guest)
+
+- [OVF import/export](https://godoc.org/github.com/vmware/govmomi/ovf)
+
+### vSphere CLI - [govc](./govc)
+
+In general, govc serves a few purposes:
+
+- User friendly CLI alternative to the GUI clients
+
+- Automation
+
+- Test harness for the sdk and gomvomi APIs
+
+- Examples of how to use the sdk and gomvomi APIs
+
+For more details, see: [USAGE](./govc/USAGE.md)
+
+### vSphere simulator - [vcsim](./vcsim)
+
+The [simulator](https://godoc.org/github.com/vmware/govmomi/simulator) package provides an SDK endpoint mock framework
+for simulating API interaction with vCenter and ESXi.
+
+### Guest tools framework - [toolbox](./toolbox)
+
+The [toolbox](https://godoc.org/github.com/vmware/govmomi/toolbox) package is a lightweight, extensible framework for
+implementing VMware guest tools functionality.
 
 ## Compatibility
 
-This library is built for and tested against ESXi and vCenter 5.5, 6.0 and 6.5.
+This library is built for and tested against ESXi and vCenter 6.0 and 6.5.
 
-If you're able to use it against older versions of ESXi and/or vCenter, please
-leave a note and we'll include it in this compatibility list.
+It should work with versions 5.5 and 5.1, but neither are officially supported.
 
 ## Documentation
 
@@ -25,21 +77,12 @@ See [godoc.org][godoc] for documentation.
 
 [apiref]:http://pubs.vmware.com/vsphere-6-5/index.jsp#com.vmware.wssdk.apiref.doc/right-pane.html
 [godoc]:http://godoc.org/github.com/vmware/govmomi
-[drone]:https://drone.io
-[dronesrc]:https://github.com/drone/drone
-[dronecli]:http://readme.drone.io/devs/cli/
-
-#### Building with CI
-Merges to this repository will trigger builds in both Travis and [Drone][drone].
-
-To build locally with Drone:
-- Ensure that you have Docker 1.6 or higher installed.
-- Install the [Drone command line tools][dronecli].
-- Run `drone exec` from within the root directory of the govmomi repository.
 
 ## Installation
 
-`go get -u github.com/vmware/govmomi`
+```sh
+go get -u github.com/vmware/govmomi
+```
 
 ## Discussion
 
@@ -57,9 +100,17 @@ Refer to the [CHANGELOG](CHANGELOG.md) for version to version changes.
 
 * [Docker Machine](https://github.com/docker/machine/tree/master/drivers/vmwarevsphere)
 
+* [Docker InfraKit](https://github.com/docker/infrakit/tree/master/pkg/provider/vsphere)
+
+* [Docker LinuxKit](https://github.com/linuxkit/linuxkit/tree/master/src/cmd/linuxkit)
+
 * [Kubernetes](https://github.com/kubernetes/kubernetes/tree/master/pkg/cloudprovider/providers/vsphere)
 
-* [Terraform](https://github.com/hashicorp/terraform/tree/master/builtin/providers/vsphere)
+* [Kubernetes kops](https://github.com/kubernetes/kops/tree/master/upup/pkg/fi/cloudup/vsphere)
+
+* [Terraform](https://github.com/terraform-providers/terraform-provider-vsphere)
+
+* [Packer](https://github.com/jetbrains-infra/packer-builder-vsphere)
 
 * [VMware VIC Engine](https://github.com/vmware/vic)
 
