@@ -21,8 +21,19 @@ def valid_ns?(t)
   $namespaces.include?(t)
 end
 
+def ucfirst(v)
+  x = "ArrayOf"
+  if v.start_with?(x)
+    # example: ArrayOfvslmInfrastructureObjectPolicy -> ArrayOfVslm...
+    return x + ucfirst(v[x.length..-1])
+  end
+
+  # example: vslmInfrastructureObjectPolicy -. VslmInfrastructureObjectPolicy
+  v[0].capitalize + v[1..-1]
+end
+
 def init_type(io, name, kind)
-  t = "reflect.TypeOf((*#{kind})(nil)).Elem()"
+  t = "reflect.TypeOf((*#{ucfirst kind})(nil)).Elem()"
 
   io.print "func init() {\n"
 
@@ -118,7 +129,7 @@ class EnumValue
     if v == ""
       n += "Null"
     else
-      n += (v[0].capitalize + v[1..-1])
+      n += ucfirst(v)
     end
 
     return n
@@ -161,7 +172,7 @@ class Simple
   def var_name
     n = self.name
     n = n[1..-1] if n[0] == "_" # Strip leading _
-    n = n[0].capitalize + n[1..-1] # Capitalize
+    n = ucfirst(n)
     return n
   end
 
@@ -178,7 +189,7 @@ class Simple
     if ! valid_ns? ns
         raise
     end
-    kind
+    ucfirst(kind)
   end
 
   def base_type?
@@ -521,7 +532,7 @@ class ComplexType < Simple
   end
 
   def dump(io)
-    io.print "type %s struct {\n" % name
+    io.print "type %s struct {\n" % ucfirst(name)
     klass.dump(io) if klass
     io.print "}\n\n"
   end

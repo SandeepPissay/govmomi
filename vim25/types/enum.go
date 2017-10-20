@@ -82,6 +82,30 @@ func init() {
 	t["AgentInstallFailedReason"] = reflect.TypeOf((*AgentInstallFailedReason)(nil)).Elem()
 }
 
+type AlarmFilterSpecAlarmTypeByEntity string
+
+const (
+	AlarmFilterSpecAlarmTypeByEntityEntityTypeAll  = AlarmFilterSpecAlarmTypeByEntity("entityTypeAll")
+	AlarmFilterSpecAlarmTypeByEntityEntityTypeHost = AlarmFilterSpecAlarmTypeByEntity("entityTypeHost")
+	AlarmFilterSpecAlarmTypeByEntityEntityTypeVm   = AlarmFilterSpecAlarmTypeByEntity("entityTypeVm")
+)
+
+func init() {
+	t["AlarmFilterSpecAlarmTypeByEntity"] = reflect.TypeOf((*AlarmFilterSpecAlarmTypeByEntity)(nil)).Elem()
+}
+
+type AlarmFilterSpecAlarmTypeByTrigger string
+
+const (
+	AlarmFilterSpecAlarmTypeByTriggerTriggerTypeAll    = AlarmFilterSpecAlarmTypeByTrigger("triggerTypeAll")
+	AlarmFilterSpecAlarmTypeByTriggerTriggerTypeEvent  = AlarmFilterSpecAlarmTypeByTrigger("triggerTypeEvent")
+	AlarmFilterSpecAlarmTypeByTriggerTriggerTypeMetric = AlarmFilterSpecAlarmTypeByTrigger("triggerTypeMetric")
+)
+
+func init() {
+	t["AlarmFilterSpecAlarmTypeByTrigger"] = reflect.TypeOf((*AlarmFilterSpecAlarmTypeByTrigger)(nil)).Elem()
+}
+
 type ArrayUpdateOperation string
 
 const (
@@ -1079,6 +1103,18 @@ func init() {
 	t["HostCapabilityFtUnsupportedReason"] = reflect.TypeOf((*HostCapabilityFtUnsupportedReason)(nil)).Elem()
 }
 
+type HostCapabilityUnmapMethodSupported string
+
+const (
+	HostCapabilityUnmapMethodSupportedPriority = HostCapabilityUnmapMethodSupported("priority")
+	HostCapabilityUnmapMethodSupportedFixed    = HostCapabilityUnmapMethodSupported("fixed")
+	HostCapabilityUnmapMethodSupportedDynamic  = HostCapabilityUnmapMethodSupported("dynamic")
+)
+
+func init() {
+	t["HostCapabilityUnmapMethodSupported"] = reflect.TypeOf((*HostCapabilityUnmapMethodSupported)(nil)).Elem()
+}
+
 type HostCapabilityVmDirectPathGen2UnsupportedReason string
 
 const (
@@ -1186,8 +1222,12 @@ func init() {
 type HostDigestInfoDigestMethodType string
 
 const (
-	HostDigestInfoDigestMethodTypeSHA1 = HostDigestInfoDigestMethodType("SHA1")
-	HostDigestInfoDigestMethodTypeMD5  = HostDigestInfoDigestMethodType("MD5")
+	HostDigestInfoDigestMethodTypeSHA1    = HostDigestInfoDigestMethodType("SHA1")
+	HostDigestInfoDigestMethodTypeMD5     = HostDigestInfoDigestMethodType("MD5")
+	HostDigestInfoDigestMethodTypeSHA256  = HostDigestInfoDigestMethodType("SHA256")
+	HostDigestInfoDigestMethodTypeSHA384  = HostDigestInfoDigestMethodType("SHA384")
+	HostDigestInfoDigestMethodTypeSHA512  = HostDigestInfoDigestMethodType("SHA512")
+	HostDigestInfoDigestMethodTypeSM3_256 = HostDigestInfoDigestMethodType("SM3_256")
 )
 
 func init() {
@@ -1261,6 +1301,7 @@ const (
 	HostFileSystemVolumeFileSystemTypeVsan  = HostFileSystemVolumeFileSystemType("vsan")
 	HostFileSystemVolumeFileSystemTypeVFFS  = HostFileSystemVolumeFileSystemType("VFFS")
 	HostFileSystemVolumeFileSystemTypeVVOL  = HostFileSystemVolumeFileSystemType("VVOL")
+	HostFileSystemVolumeFileSystemTypePMEM  = HostFileSystemVolumeFileSystemType("PMEM")
 	HostFileSystemVolumeFileSystemTypeOTHER = HostFileSystemVolumeFileSystemType("OTHER")
 )
 
@@ -1720,6 +1761,28 @@ func init() {
 	t["HostProfileManagerAnswerFileStatus"] = reflect.TypeOf((*HostProfileManagerAnswerFileStatus)(nil)).Elem()
 }
 
+type HostProfileManagerCompositionResultResultElementStatus string
+
+const (
+	HostProfileManagerCompositionResultResultElementStatusSuccess = HostProfileManagerCompositionResultResultElementStatus("success")
+	HostProfileManagerCompositionResultResultElementStatusError   = HostProfileManagerCompositionResultResultElementStatus("error")
+)
+
+func init() {
+	t["HostProfileManagerCompositionResultResultElementStatus"] = reflect.TypeOf((*HostProfileManagerCompositionResultResultElementStatus)(nil)).Elem()
+}
+
+type HostProfileManagerCompositionValidationResultResultElementStatus string
+
+const (
+	HostProfileManagerCompositionValidationResultResultElementStatusSuccess = HostProfileManagerCompositionValidationResultResultElementStatus("success")
+	HostProfileManagerCompositionValidationResultResultElementStatusError   = HostProfileManagerCompositionValidationResultResultElementStatus("error")
+)
+
+func init() {
+	t["HostProfileManagerCompositionValidationResultResultElementStatus"] = reflect.TypeOf((*HostProfileManagerCompositionValidationResultResultElementStatus)(nil)).Elem()
+}
+
 type HostProfileManagerTaskListRequirement string
 
 const (
@@ -1856,6 +1919,17 @@ func init() {
 	t["HostSystemPowerState"] = reflect.TypeOf((*HostSystemPowerState)(nil)).Elem()
 }
 
+type HostTpmAttestationInfoAcceptanceStatus string
+
+const (
+	HostTpmAttestationInfoAcceptanceStatusNotAccepted = HostTpmAttestationInfoAcceptanceStatus("notAccepted")
+	HostTpmAttestationInfoAcceptanceStatusAccepted    = HostTpmAttestationInfoAcceptanceStatus("accepted")
+)
+
+func init() {
+	t["HostTpmAttestationInfoAcceptanceStatus"] = reflect.TypeOf((*HostTpmAttestationInfoAcceptanceStatus)(nil)).Elem()
+}
+
 type HostUnresolvedVmfsExtentUnresolvedReason string
 
 const (
@@ -1905,6 +1979,17 @@ const (
 
 func init() {
 	t["HostVmciAccessManagerMode"] = reflect.TypeOf((*HostVmciAccessManagerMode)(nil)).Elem()
+}
+
+type HostVmfsVolumeUnmapBandwidthPolicy string
+
+const (
+	HostVmfsVolumeUnmapBandwidthPolicyFixed   = HostVmfsVolumeUnmapBandwidthPolicy("fixed")
+	HostVmfsVolumeUnmapBandwidthPolicyDynamic = HostVmfsVolumeUnmapBandwidthPolicy("dynamic")
+)
+
+func init() {
+	t["HostVmfsVolumeUnmapBandwidthPolicy"] = reflect.TypeOf((*HostVmfsVolumeUnmapBandwidthPolicy)(nil)).Elem()
 }
 
 type HostVmfsVolumeUnmapPriority string
@@ -2286,6 +2371,97 @@ const (
 
 func init() {
 	t["NumVirtualCpusIncompatibleReason"] = reflect.TypeOf((*NumVirtualCpusIncompatibleReason)(nil)).Elem()
+}
+
+type NvdimmHealthStatus string
+
+const (
+	NvdimmHealthStatusNormal      = NvdimmHealthStatus("normal")
+	NvdimmHealthStatusNoncritical = NvdimmHealthStatus("noncritical")
+	NvdimmHealthStatusCritical    = NvdimmHealthStatus("critical")
+	NvdimmHealthStatusFatal       = NvdimmHealthStatus("fatal")
+)
+
+func init() {
+	t["NvdimmHealthStatus"] = reflect.TypeOf((*NvdimmHealthStatus)(nil)).Elem()
+}
+
+type NvdimmInterleaveSetState string
+
+const (
+	NvdimmInterleaveSetStateInvalid = NvdimmInterleaveSetState("invalid")
+	NvdimmInterleaveSetStateActive  = NvdimmInterleaveSetState("active")
+)
+
+func init() {
+	t["NvdimmInterleaveSetState"] = reflect.TypeOf((*NvdimmInterleaveSetState)(nil)).Elem()
+}
+
+type NvdimmNamespaceHealthStatus string
+
+const (
+	NvdimmNamespaceHealthStatusNormal            = NvdimmNamespaceHealthStatus("normal")
+	NvdimmNamespaceHealthStatusMissing           = NvdimmNamespaceHealthStatus("missing")
+	NvdimmNamespaceHealthStatusLabelMissing      = NvdimmNamespaceHealthStatus("labelMissing")
+	NvdimmNamespaceHealthStatusInterleaveBroken  = NvdimmNamespaceHealthStatus("interleaveBroken")
+	NvdimmNamespaceHealthStatusLabelInconsistent = NvdimmNamespaceHealthStatus("labelInconsistent")
+	NvdimmNamespaceHealthStatusBttCorrupt        = NvdimmNamespaceHealthStatus("bttCorrupt")
+	NvdimmNamespaceHealthStatusBadBlockSize      = NvdimmNamespaceHealthStatus("badBlockSize")
+)
+
+func init() {
+	t["NvdimmNamespaceHealthStatus"] = reflect.TypeOf((*NvdimmNamespaceHealthStatus)(nil)).Elem()
+}
+
+type NvdimmNamespaceState string
+
+const (
+	NvdimmNamespaceStateInvalid  = NvdimmNamespaceState("invalid")
+	NvdimmNamespaceStateNotInUse = NvdimmNamespaceState("notInUse")
+	NvdimmNamespaceStateInUse    = NvdimmNamespaceState("inUse")
+)
+
+func init() {
+	t["NvdimmNamespaceState"] = reflect.TypeOf((*NvdimmNamespaceState)(nil)).Elem()
+}
+
+type NvdimmNamespaceType string
+
+const (
+	NvdimmNamespaceTypeBlockNamespace      = NvdimmNamespaceType("blockNamespace")
+	NvdimmNamespaceTypePersistentNamespace = NvdimmNamespaceType("persistentNamespace")
+)
+
+func init() {
+	t["NvdimmNamespaceType"] = reflect.TypeOf((*NvdimmNamespaceType)(nil)).Elem()
+}
+
+type NvdimmNvdimmHealthInfoState string
+
+const (
+	NvdimmNvdimmHealthInfoStateNormal = NvdimmNvdimmHealthInfoState("normal")
+	NvdimmNvdimmHealthInfoStateError  = NvdimmNvdimmHealthInfoState("error")
+)
+
+func init() {
+	t["NvdimmNvdimmHealthInfoState"] = reflect.TypeOf((*NvdimmNvdimmHealthInfoState)(nil)).Elem()
+}
+
+type NvdimmRangeType string
+
+const (
+	NvdimmRangeTypeVolatileRange              = NvdimmRangeType("volatileRange")
+	NvdimmRangeTypePersistentRange            = NvdimmRangeType("persistentRange")
+	NvdimmRangeTypeControlRange               = NvdimmRangeType("controlRange")
+	NvdimmRangeTypeBlockRange                 = NvdimmRangeType("blockRange")
+	NvdimmRangeTypeVolatileVirtualDiskRange   = NvdimmRangeType("volatileVirtualDiskRange")
+	NvdimmRangeTypeVolatileVirtualCDRange     = NvdimmRangeType("volatileVirtualCDRange")
+	NvdimmRangeTypePersistentVirtualDiskRange = NvdimmRangeType("persistentVirtualDiskRange")
+	NvdimmRangeTypePersistentVirtualCDRange   = NvdimmRangeType("persistentVirtualCDRange")
+)
+
+func init() {
+	t["NvdimmRangeType"] = reflect.TypeOf((*NvdimmRangeType)(nil)).Elem()
 }
 
 type ObjectUpdateKind string
@@ -2688,10 +2864,11 @@ func init() {
 type ScsiDiskType string
 
 const (
-	ScsiDiskTypeNative512   = ScsiDiskType("native512")
-	ScsiDiskTypeEmulated512 = ScsiDiskType("emulated512")
-	ScsiDiskTypeNative4k    = ScsiDiskType("native4k")
-	ScsiDiskTypeUnknown     = ScsiDiskType("unknown")
+	ScsiDiskTypeNative512          = ScsiDiskType("native512")
+	ScsiDiskTypeEmulated512        = ScsiDiskType("emulated512")
+	ScsiDiskTypeNative4k           = ScsiDiskType("native4k")
+	ScsiDiskTypeSoftwareEmulated4k = ScsiDiskType("SoftwareEmulated4k")
+	ScsiDiskTypeUnknown            = ScsiDiskType("unknown")
 )
 
 func init() {
@@ -3264,6 +3441,18 @@ const (
 
 func init() {
 	t["VirtualDeviceConfigSpecOperation"] = reflect.TypeOf((*VirtualDeviceConfigSpecOperation)(nil)).Elem()
+}
+
+type VirtualDeviceConnectInfoMigrateConnectOp string
+
+const (
+	VirtualDeviceConnectInfoMigrateConnectOpConnect    = VirtualDeviceConnectInfoMigrateConnectOp("connect")
+	VirtualDeviceConnectInfoMigrateConnectOpDisconnect = VirtualDeviceConnectInfoMigrateConnectOp("disconnect")
+	VirtualDeviceConnectInfoMigrateConnectOpUnset      = VirtualDeviceConnectInfoMigrateConnectOp("unset")
+)
+
+func init() {
+	t["VirtualDeviceConnectInfoMigrateConnectOp"] = reflect.TypeOf((*VirtualDeviceConnectInfoMigrateConnectOp)(nil)).Elem()
 }
 
 type VirtualDeviceConnectInfoStatus string
@@ -4260,6 +4449,17 @@ const (
 
 func init() {
 	t["VirtualSerialPortEndPoint"] = reflect.TypeOf((*VirtualSerialPortEndPoint)(nil)).Elem()
+}
+
+type VirtualVmxnet3VrdmaOptionDeviceProtocols string
+
+const (
+	VirtualVmxnet3VrdmaOptionDeviceProtocolsRocev1 = VirtualVmxnet3VrdmaOptionDeviceProtocols("rocev1")
+	VirtualVmxnet3VrdmaOptionDeviceProtocolsRocev2 = VirtualVmxnet3VrdmaOptionDeviceProtocols("rocev2")
+)
+
+func init() {
+	t["VirtualVmxnet3VrdmaOptionDeviceProtocols"] = reflect.TypeOf((*VirtualVmxnet3VrdmaOptionDeviceProtocols)(nil)).Elem()
 }
 
 type VmDasBeingResetEventReasonCode string
