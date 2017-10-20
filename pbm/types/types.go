@@ -269,6 +269,12 @@ func init() {
 	types.Add("pbm:PbmAlreadyExists", reflect.TypeOf((*PbmAlreadyExists)(nil)).Elem())
 }
 
+type PbmAlreadyExistsFault PbmAlreadyExists
+
+func init() {
+	types.Add("pbm:PbmAlreadyExistsFault", reflect.TypeOf((*PbmAlreadyExistsFault)(nil)).Elem())
+}
+
 type PbmAssignDefaultRequirementProfile PbmAssignDefaultRequirementProfileRequestType
 
 func init() {
