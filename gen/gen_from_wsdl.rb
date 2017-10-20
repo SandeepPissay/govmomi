@@ -55,7 +55,7 @@ EOF
     types.
     sort_by { |x| x.name }.
     uniq { |x| x.name }.
-    select { |x| x.name[0] == x.name[0].upcase }. # Only capitalized methods for now...
+    select { |x| x.name[0] == x.name[0].upcase || x.name.start_with?("vslm") }. # Only capitalized methods for now...
     select { |t| !t.is_enum? }.
     each { |e| e.dump(io); e.dump_init(io) }
 end

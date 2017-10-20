@@ -152,6 +152,20 @@ func init() {
 	types.Add("pbm:PbmObjectType", reflect.TypeOf((*PbmObjectType)(nil)).Elem())
 }
 
+type PbmOperation string
+
+const (
+	PbmOperationCREATE      = PbmOperation("CREATE")
+	PbmOperationREGISTER    = PbmOperation("REGISTER")
+	PbmOperationRECONFIGURE = PbmOperation("RECONFIGURE")
+	PbmOperationMIGRATE     = PbmOperation("MIGRATE")
+	PbmOperationCLONE       = PbmOperation("CLONE")
+)
+
+func init() {
+	types.Add("pbm:PbmOperation", reflect.TypeOf((*PbmOperation)(nil)).Elem())
+}
+
 type PbmProfileCategoryEnum string
 
 const (
@@ -179,6 +193,7 @@ type PbmSystemCreatedProfileType string
 const (
 	PbmSystemCreatedProfileTypeVsanDefaultProfile = PbmSystemCreatedProfileType("VsanDefaultProfile")
 	PbmSystemCreatedProfileTypeVVolDefaultProfile = PbmSystemCreatedProfileType("VVolDefaultProfile")
+	PbmSystemCreatedProfileTypePmemDefaultProfile = PbmSystemCreatedProfileType("PmemDefaultProfile")
 )
 
 func init() {
