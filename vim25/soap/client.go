@@ -52,7 +52,7 @@ type RoundTripper interface {
 	RoundTrip(ctx context.Context, req, res HasFault) error
 }
 
-const (
+var (
 	DefaultVimNamespace  = "urn:vim25"
 	DefaultVimVersion    = "6.5"
 	DefaultMinVimVersion = "5.5"
