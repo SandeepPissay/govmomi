@@ -107,6 +107,14 @@ load test_helper
   assert_success
   assert_line "SyncTimeWithHost: true"
 
+  run govc object.collect -s "vm/$id" config.memoryAllocation.reservation
+  assert_success 0
+
+  govc vm.change -vm "$id" -mem.reservation 1024
+
+  run govc object.collect -s "vm/$id" config.memoryAllocation.reservation
+  assert_success 1024
+
   nid=$(new_id)
   run govc vm.change -name $nid -vm $id
   assert_success
@@ -231,6 +239,9 @@ load test_helper
     run govc vm.info -json $id
     assert_success
     assert_line "{\"VirtualMachines\":null}"
+
+    run govc vm.info -dump $id
+    assert_success
 
     run govc vm.create -on=false $id
     assert_success
@@ -494,7 +505,7 @@ load test_helper
 }
 
 @test "vm.register vcsim" {
-  vcsim_env
+  vcsim_env -autostart=false
 
   host=$GOVC_HOST
   pool=$GOVC_RESOURCE_POOL

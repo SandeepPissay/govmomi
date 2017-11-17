@@ -9,10 +9,23 @@ load test_helper
   assert_success
   assert_line "Vendor: VMware, Inc."
 
+  run env GOVC_TLS_HANDSHAKE_TIMEOUT=10s govc about
+  assert_success
+  assert_line "Vendor: VMware, Inc."
+
+  run env GOVC_TLS_HANDSHAKE_TIMEOUT=NOT_A_DURATION govc about
+  assert_failure
+
   run govc about -json
   assert_success
 
   run govc about -json -l
+  assert_success
+
+  run govc about -dump
+  assert_success
+
+  run govc about -dump -l
   assert_success
 }
 
