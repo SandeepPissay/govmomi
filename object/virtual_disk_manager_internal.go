@@ -152,10 +152,10 @@ func (m VirtualDiskManager) CreateChildDisk(ctx context.Context, parent string, 
 		req.ParentDatacenter = &ref
 	}
 
-	_, err := createChildDiskTask(ctx, m.Client(), &req)
+	task, err := createChildDiskTask(ctx, m.Client(), &req)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewTask(m.Client(), types.ManagedObjectReference{}), nil
+	return NewTask(m.Client(), task.Returnval), nil
 }
