@@ -101,7 +101,7 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	finder := find.NewFinder(cnsClient.vim25Client, false)
+	finder := find.NewFinder(cnsClient.Vim25Client, false)
 	dc, err := finder.Datacenter(ctx, datacenter)
 	if err != nil {
 		t.Fatal(err)
@@ -802,7 +802,7 @@ func TestClient(t *testing.T) {
 	vmRef := vmTaskInfo.Result.(object.Reference)
 	t.Logf("Node VM created sucessfully. vmRef: %+v", vmRef.Reference())
 
-	nodeVM := object.NewVirtualMachine(cnsClient.vim25Client, vmRef.Reference())
+	nodeVM := object.NewVirtualMachine(cnsClient.Vim25Client, vmRef.Reference())
 	defer nodeVM.Destroy(ctx)
 
 	// Test AttachVolume API

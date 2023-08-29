@@ -55,7 +55,7 @@ type Client struct {
 
 	RoundTripper soap.RoundTripper
 
-	vim25Client *vim25.Client
+	Vim25Client *vim25.Client
 }
 
 // NewClient creates a new CNS client
@@ -82,7 +82,7 @@ func (c *Client) CreateVolume(ctx context.Context, createSpecList []cnstypes.Cns
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // UpdateVolumeMetadata calls the CNS CnsUpdateVolumeMetadata API with UpdateSpecs specified in the argument
@@ -96,7 +96,7 @@ func (c *Client) UpdateVolumeMetadata(ctx context.Context, updateSpecList []cnst
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // DeleteVolume calls the CNS delete API.
@@ -110,7 +110,7 @@ func (c *Client) DeleteVolume(ctx context.Context, volumeIDList []cnstypes.CnsVo
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // ExtendVolume calls the CNS Extend API.
@@ -123,7 +123,7 @@ func (c *Client) ExtendVolume(ctx context.Context, extendSpecList []cnstypes.Cns
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // AttachVolume calls the CNS Attach API.
@@ -136,7 +136,7 @@ func (c *Client) AttachVolume(ctx context.Context, attachSpecList []cnstypes.Cns
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // DetachVolume calls the CNS Detach API.
@@ -149,7 +149,7 @@ func (c *Client) DetachVolume(ctx context.Context, detachSpecList []cnstypes.Cns
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // QueryVolume calls the CNS QueryVolume API.
@@ -176,7 +176,7 @@ func (c *Client) QueryVolumeInfo(ctx context.Context, volumeIDList []cnstypes.Cn
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // QueryAllVolume calls the CNS QueryAllVolume API.
@@ -204,7 +204,7 @@ func (c *Client) QueryVolumeAsync(ctx context.Context, queryFilter cnstypes.CnsQ
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // RelocateVolume calls the CNS Relocate API.
@@ -217,7 +217,7 @@ func (c *Client) RelocateVolume(ctx context.Context, relocateSpecs ...cnstypes.B
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // ConfigureVolumeACLs calls the CNS Configure ACL API.
@@ -230,7 +230,7 @@ func (c *Client) ConfigureVolumeACLs(ctx context.Context, aclConfigSpecs ...cnst
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // CreateSnapshots calls the CNS CreateSnapshots API
@@ -245,7 +245,7 @@ func (c *Client) CreateSnapshots(ctx context.Context, snapshotCreateSpecList []c
 		return nil, err
 	}
 
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // DeleteSnapshots calls the CNS DeleteSnapshots API
@@ -258,7 +258,7 @@ func (c *Client) DeleteSnapshots(ctx context.Context, snapshotDeleteSpecList []c
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // QuerySnapshots calls the CNS QuerySnapshots API
@@ -271,7 +271,7 @@ func (c *Client) QuerySnapshots(ctx context.Context, snapshotQueryFilter cnstype
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // ReconfigVolumePolicy calls the CnsReconfigVolumePolicy API
@@ -284,7 +284,7 @@ func (c *Client) ReconfigVolumePolicy(ctx context.Context, PolicyReconfigSpecs [
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
 
 // SyncDatastore calls the CnsSyncDatastore API
@@ -301,5 +301,5 @@ func (c *Client) SyncDatastore(ctx context.Context, dsURL string, fullSync bool)
 	if err != nil {
 		return nil, err
 	}
-	return object.NewTask(c.vim25Client, res.Returnval), nil
+	return object.NewTask(c.Vim25Client, res.Returnval), nil
 }
