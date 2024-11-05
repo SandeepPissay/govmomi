@@ -18,16 +18,12 @@ package cns
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/dougm/pretty"
-
 	"github.com/vmware/govmomi/find"
-	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25/debug"
 	"github.com/vmware/govmomi/vim25/mo"
@@ -55,26 +51,26 @@ func TestClient(t *testing.T) {
 	// set CNS_RUN_FILESHARE_TESTS environment to true, if your setup has vsanfileshare enabled.
 	// when CNS_RUN_FILESHARE_TESTS is not set to true, vsan file share related tests are skipped.
 	// example: export CNS_RUN_FILESHARE_TESTS='true'
-	run_fileshare_tests := os.Getenv("CNS_RUN_FILESHARE_TESTS")
+	//run_fileshare_tests := os.Getenv("CNS_RUN_FILESHARE_TESTS")
 
 	// if backingDiskURLPath is not set, test for Creating Volume with setting BackingDiskUrlPath in the BackingObjectDetails of
 	// CnsVolumeCreateSpec will be skipped.
 	// example: export BACKING_DISK_URL_PATH='https://vc-ip/folder/vmdkfilePath.vmdk?dcPath=DataCenterPath&dsName=DataStoreName'
-	backingDiskURLPath := os.Getenv("BACKING_DISK_URL_PATH")
+	//backingDiskURLPath := os.Getenv("BACKING_DISK_URL_PATH")
 
 	// if datastoreForMigration is not set, test for CNS Relocate API of a volume to another datastore is skipped.
 	// input format is same as CNS_DATASTORE. Format eg. "vSANDirect_10.92.217.162_mpx.vmhba0:C0:T2:L0"/ "vsandatastore"
 	// make sure that migration datastore is accessible from host on which CNS_DATASTORE is mounted.
-	datastoreForMigration := os.Getenv("CNS_MIGRATION_DATASTORE")
+	//datastoreForMigration := os.Getenv("CNS_MIGRATION_DATASTORE")
 
 	// if spbmPolicyId4Reconfig is not set, test for CnsReconfigVolumePolicy API will be skipped
 	// example: export CNS_SPBM_POLICY_ID_4_RECONFIG=6f64d90e-2ad5-4c4d-8cbc-a3330ebc496c
-	spbmPolicyId4Reconfig := os.Getenv("CNS_SPBM_POLICY_ID_4_RECONFIG")
+	//spbmPolicyId4Reconfig := os.Getenv("CNS_SPBM_POLICY_ID_4_RECONFIG")
 
 	if url == "" || datacenter == "" || datastore == "" {
 		t.Skip("CNS_VC_URL or CNS_DATACENTER or CNS_DATASTORE is not set")
 	}
-	resporcePoolPath := os.Getenv("CNS_RESOURCE_POOL_PATH") // example "/datacenter-name/host/host-ip/Resources" or  /datacenter-name/host/cluster-name/Resources
+	//resporcePoolPath := os.Getenv("CNS_RESOURCE_POOL_PATH") // example "/datacenter-name/host/host-ip/Resources" or  /datacenter-name/host/cluster-name/Resources
 	u, err := soap.ParseURL(url)
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +115,7 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dsUrl := dsSummaries[0].Summary.Url
+	//dsUrl := dsSummaries[0].Summary.Url
 
 	var dsList []vim25types.ManagedObjectReference
 	dsList = append(dsList, ds.Reference())
@@ -130,40 +126,54 @@ func TestClient(t *testing.T) {
 		ClusterId:           "demo-cluster-id",
 		VSphereUser:         "Administrator@vsphere.local",
 		ClusterFlavor:       string(cnstypes.CnsClusterFlavorVanilla),
-		ClusterDistribution: "OpenShift",
+		ClusterDistribution: "DemoCluster",
 	}
 	containerClusterArray = append(containerClusterArray, containerCluster)
 
-	// Test CreateVolume API
-	var cnsVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
-	cnsVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
-		Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0",
-		VolumeType: string(cnstypes.CnsVolumeTypeBlock),
-		Datastores: dsList,
-		Metadata: cnstypes.CnsVolumeMetadata{
-			ContainerCluster: containerCluster,
-		},
-		BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
-			CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
-				CapacityInMb: 5120,
+	var cnsFileVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
+	vSANFileCreateSpec := &cnstypes.CnsVSANFileCreateSpec{
+		SoftQuotaInMb: 5120,
+		Permission: []vsanfstypes.VsanFileShareNetPermission{
+			{
+				Ips:         "*",
+				Permissions: vsanfstypes.VsanFileShareAccessTypeREAD_WRITE,
+				AllowRoot:   true,
 			},
 		},
 	}
-	cnsVolumeCreateSpecList = append(cnsVolumeCreateSpecList, cnsVolumeCreateSpec)
-	t.Logf("Creating volume using the spec: %+v", pretty.Sprint(cnsVolumeCreateSpec))
-	createTask, err := cnsClient.CreateVolume(ctx, cnsVolumeCreateSpecList)
+
+	cnsFileVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
+		Name:       "cns-file-volume",
+		VolumeType: string(cnstypes.CnsVolumeTypeFile),
+		Datastores: dsList,
+		Metadata: cnstypes.CnsVolumeMetadata{
+			ContainerCluster:      containerCluster,
+			ContainerClusterArray: containerClusterArray,
+		},
+		BackingObjectDetails: &cnstypes.CnsVsanFileShareBackingDetails{
+			CnsFileBackingDetails: cnstypes.CnsFileBackingDetails{
+				CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
+					CapacityInMb: 5120,
+				},
+			},
+		},
+		CreateSpec: vSANFileCreateSpec,
+	}
+	cnsFileVolumeCreateSpecList = append(cnsFileVolumeCreateSpecList, cnsFileVolumeCreateSpec)
+	t.Logf("Creating CNS file volume using the spec: %+v", cnsFileVolumeCreateSpec)
+	createTask, err := cnsClient.CreateVolume(ctx, cnsFileVolumeCreateSpecList)
 	if err != nil {
-		t.Errorf("Failed to create volume. Error: %+v \n", err)
+		t.Errorf("Failed to create vsan fileshare volume. Error: %+v \n", err)
 		t.Fatal(err)
 	}
 	createTaskInfo, err := GetTaskInfo(ctx, createTask)
 	if err != nil {
-		t.Errorf("Failed to create volume. Error: %+v \n", err)
+		t.Errorf("Failed to create Fileshare volume. Error: %+v \n", err)
 		t.Fatal(err)
 	}
 	createTaskResult, err := GetTaskResult(ctx, createTaskInfo)
 	if err != nil {
-		t.Errorf("Failed to create volume. Error: %+v \n", err)
+		t.Errorf("Failed to create Fileshare volume. Error: %+v \n", err)
 		t.Fatal(err)
 	}
 	if createTaskResult == nil {
@@ -172,1224 +182,540 @@ func TestClient(t *testing.T) {
 	}
 	createVolumeOperationRes := createTaskResult.GetCnsVolumeOperationResult()
 	if createVolumeOperationRes.Fault != nil {
-		t.Fatalf("Failed to create volume: fault=%+v", createVolumeOperationRes.Fault)
+		t.Fatalf("Failed to create Fileshare volume: fault=%+v", createVolumeOperationRes.Fault)
 	}
-	volumeId := createVolumeOperationRes.VolumeId.Id
-	volumeCreateResult := (createTaskResult).(*cnstypes.CnsVolumeCreateResult)
-	t.Logf("volumeCreateResult %+v", volumeCreateResult)
-	t.Logf("Volume created sucessfully. volumeId: %s", volumeId)
+	filevolumeId := createVolumeOperationRes.VolumeId.Id
+	t.Logf("Fileshare volume created sucessfully. filevolumeId: %s", filevolumeId)
 
-	if cnsClient.Version != ReleaseVSAN67u3 {
-		// Test creating static volume using existing CNS volume should fail
-		var staticCnsVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
-		staticCnsVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
-			Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0",
-			VolumeType: string(cnstypes.CnsVolumeTypeBlock),
-			Metadata: cnstypes.CnsVolumeMetadata{
-				ContainerCluster: containerCluster,
-			},
-			BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
-				CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
-					CapacityInMb: 5120,
-				},
-				BackingDiskId: volumeId,
-			},
-		}
+	// Test CreateVolume API
+	//var cnsVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
+	//cnsVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
+	//	Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0",
+	//	VolumeType: string(cnstypes.CnsVolumeTypeBlock),
+	//	Datastores: dsList,
+	//	Metadata: cnstypes.CnsVolumeMetadata{
+	//		ContainerCluster: containerCluster,
+	//	},
+	//	BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
+	//		CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
+	//			CapacityInMb: 5120,
+	//		},
+	//	},
+	//}
+	//cnsVolumeCreateSpecList = append(cnsVolumeCreateSpecList, cnsVolumeCreateSpec)
+	//t.Logf("Creating volume using the spec: %+v", pretty.Sprint(cnsVolumeCreateSpec))
+	//createTask, err := cnsClient.CreateVolume(ctx, cnsVolumeCreateSpecList)
+	//if err != nil {
+	//	t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//	t.Fatal(err)
+	//}
+	//createTaskInfo, err := GetTaskInfo(ctx, createTask)
+	//if err != nil {
+	//	t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//	t.Fatal(err)
+	//}
+	//createTaskResult, err := GetTaskResult(ctx, createTaskInfo)
+	//if err != nil {
+	//	t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//	t.Fatal(err)
+	//}
+	//if createTaskResult == nil {
+	//	t.Fatalf("Empty create task results")
+	//	t.FailNow()
+	//}
+	//createVolumeOperationRes := createTaskResult.GetCnsVolumeOperationResult()
+	//if createVolumeOperationRes.Fault != nil {
+	//	t.Fatalf("Failed to create volume: fault=%+v", createVolumeOperationRes.Fault)
+	//}
+	//volumeId := createVolumeOperationRes.VolumeId.Id
+	//volumeCreateResult := (createTaskResult).(*cnstypes.CnsVolumeCreateResult)
+	//t.Logf("volumeCreateResult %+v", volumeCreateResult)
+	//t.Logf("Volume created sucessfully. volumeId: %s", volumeId)
+	//
+	//if cnsClient.Version != ReleaseVSAN67u3 {
+	//	// Test creating static volume using existing CNS volume should fail
+	//	var staticCnsVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
+	//	staticCnsVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
+	//		Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0",
+	//		VolumeType: string(cnstypes.CnsVolumeTypeBlock),
+	//		Metadata: cnstypes.CnsVolumeMetadata{
+	//			ContainerCluster: containerCluster,
+	//		},
+	//		BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
+	//			CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
+	//				CapacityInMb: 5120,
+	//			},
+	//			BackingDiskId: volumeId,
+	//		},
+	//	}
+	//
+	//	staticCnsVolumeCreateSpecList = append(staticCnsVolumeCreateSpecList, staticCnsVolumeCreateSpec)
+	//	t.Logf("Creating volume using the spec: %+v", pretty.Sprint(staticCnsVolumeCreateSpec))
+	//	recreateTask, err := cnsClient.CreateVolume(ctx, staticCnsVolumeCreateSpecList)
+	//	if err != nil {
+	//		t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	reCreateTaskInfo, err := GetTaskInfo(ctx, recreateTask)
+	//	if err != nil {
+	//		t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	reCreateTaskResult, err := GetTaskResult(ctx, reCreateTaskInfo)
+	//	if err != nil {
+	//		t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	if reCreateTaskResult == nil {
+	//		t.Fatalf("Empty create task results")
+	//		t.FailNow()
+	//	}
+	//	reCreateVolumeOperationRes := reCreateTaskResult.GetCnsVolumeOperationResult()
+	//	t.Logf("reCreateVolumeOperationRes.: %+v", pretty.Sprint(reCreateVolumeOperationRes))
+	//	if reCreateVolumeOperationRes.Fault != nil {
+	//		t.Logf("reCreateVolumeOperationRes.Fault: %+v", pretty.Sprint(reCreateVolumeOperationRes.Fault))
+	//		_, ok := reCreateVolumeOperationRes.Fault.Fault.(cnstypes.CnsAlreadyRegisteredFault)
+	//		if !ok {
+	//			t.Fatalf("Fault is not a CnsAlreadyRegisteredFault")
+	//		}
+	//	} else {
+	//		t.Fatalf("re-create same volume should fail with CnsAlreadyRegisteredFault")
+	//	}
+	//}
 
-		staticCnsVolumeCreateSpecList = append(staticCnsVolumeCreateSpecList, staticCnsVolumeCreateSpec)
-		t.Logf("Creating volume using the spec: %+v", pretty.Sprint(staticCnsVolumeCreateSpec))
-		recreateTask, err := cnsClient.CreateVolume(ctx, staticCnsVolumeCreateSpecList)
-		if err != nil {
-			t.Errorf("Failed to create volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		reCreateTaskInfo, err := GetTaskInfo(ctx, recreateTask)
-		if err != nil {
-			t.Errorf("Failed to create volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		reCreateTaskResult, err := GetTaskResult(ctx, reCreateTaskInfo)
-		if err != nil {
-			t.Errorf("Failed to create volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		if reCreateTaskResult == nil {
-			t.Fatalf("Empty create task results")
-			t.FailNow()
-		}
-		reCreateVolumeOperationRes := reCreateTaskResult.GetCnsVolumeOperationResult()
-		t.Logf("reCreateVolumeOperationRes.: %+v", pretty.Sprint(reCreateVolumeOperationRes))
-		if reCreateVolumeOperationRes.Fault != nil {
-			t.Logf("reCreateVolumeOperationRes.Fault: %+v", pretty.Sprint(reCreateVolumeOperationRes.Fault))
-			_, ok := reCreateVolumeOperationRes.Fault.Fault.(cnstypes.CnsAlreadyRegisteredFault)
-			if !ok {
-				t.Fatalf("Fault is not a CnsAlreadyRegisteredFault")
-			}
-		} else {
-			t.Fatalf("re-create same volume should fail with CnsAlreadyRegisteredFault")
-		}
-	}
-
-	// Test QueryVolume API
-	var queryFilter cnstypes.CnsQueryFilter
-	var volumeIDList []cnstypes.CnsVolumeId
-	volumeIDList = append(volumeIDList, cnstypes.CnsVolumeId{Id: volumeId})
-	queryFilter.VolumeIds = volumeIDList
-	t.Logf("Calling QueryVolume using queryFilter: %+v", pretty.Sprint(queryFilter))
-	queryResult, err := cnsClient.QueryVolume(ctx, queryFilter)
-	if err != nil {
-		t.Errorf("Failed to query volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	t.Logf("Successfully Queried Volumes. queryResult: %+v", pretty.Sprint(queryResult))
-
-	// Test QueryVolumeInfo API
-	// QueryVolumeInfo is not supported on ReleaseVSAN67u3 and ReleaseVSAN70
-	// This API is available on vSphere 7.0u1 onward
-	if cnsClient.Version != ReleaseVSAN67u3 && cnsClient.Version != ReleaseVSAN70 {
-		t.Logf("Calling QueryVolumeInfo using: %+v", pretty.Sprint(volumeIDList))
-		queryVolumeInfoTask, err := cnsClient.QueryVolumeInfo(ctx, volumeIDList)
-		if err != nil {
-			t.Errorf("Failed to query volumes with QueryVolumeInfo. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		queryVolumeInfoTaskInfo, err := GetTaskInfo(ctx, queryVolumeInfoTask)
-		if err != nil {
-			t.Errorf("Failed to query volumes with QueryVolumeInfo. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		queryVolumeInfoTaskResults, err := GetTaskResultArray(ctx, queryVolumeInfoTaskInfo)
-		if err != nil {
-			t.Errorf("Failed to query volumes with QueryVolumeInfo. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		if queryVolumeInfoTaskResults == nil {
-			t.Fatalf("Empty queryVolumeInfoTaskResult")
-			t.FailNow()
-		}
-		for _, queryVolumeInfoTaskResult := range queryVolumeInfoTaskResults {
-			queryVolumeInfoOperationRes := queryVolumeInfoTaskResult.GetCnsVolumeOperationResult()
-			if queryVolumeInfoOperationRes.Fault != nil {
-				t.Fatalf("Failed to query volumes with QueryVolumeInfo. fault=%+v", queryVolumeInfoOperationRes.Fault)
-			}
-			t.Logf("Successfully Queried Volumes. queryVolumeInfoTaskResult: %+v", pretty.Sprint(queryVolumeInfoTaskResult))
-		}
-	}
-
-	// Test BackingDiskObjectId field only for vVol or vSAN volume type
-	var queryFilterBackingDiskObjectIdTest cnstypes.CnsQueryFilter
-	var volumeIDListBackingDiskObjectIdTest []cnstypes.CnsVolumeId
-	volumeIDListBackingDiskObjectIdTest = append(volumeIDListBackingDiskObjectIdTest, cnstypes.CnsVolumeId{Id: volumeId})
-	queryFilterBackingDiskObjectIdTest.VolumeIds = volumeIDListBackingDiskObjectIdTest
-	t.Logf("Calling QueryVolume using queryFilter: %+v", pretty.Sprint(queryFilterBackingDiskObjectIdTest))
-	queryResultBackingDiskObjectIdTest, err := cnsClient.QueryVolume(ctx, queryFilterBackingDiskObjectIdTest)
-	if err != nil {
-		t.Errorf("Failed to query all volumes. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	t.Logf("Successfully Queried Volumes. queryResultBackingDiskObjectIdTest: %+v", pretty.Sprint(queryResultBackingDiskObjectIdTest))
-	t.Log("Checking backingDiskObjectId retieved")
-	datastoreType, err := ds.Type(ctx)
-	if err != nil {
-		t.Errorf("Failed to get datastore type. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	for _, vol := range queryResultBackingDiskObjectIdTest.Volumes {
-		// BackingDiskObjectId is only for vsan/vvol, for other type this field is empty but test should not fail
-		backingDiskObjectId := vol.BackingObjectDetails.(*cnstypes.CnsBlockBackingDetails).BackingDiskObjectId
-		if backingDiskObjectId == "" {
-			if datastoreType == vim25types.HostFileSystemVolumeFileSystemTypeVsan || datastoreType == vim25types.HostFileSystemVolumeFileSystemTypeVVOL {
-				t.Errorf("Failed to get BackingDiskObjectId")
-				t.FailNow()
-			}
-		}
-	}
-
-	// Test QuerySnapshots API on 7.0 U3 or above
-	var snapshotQueryFilter cnstypes.CnsSnapshotQueryFilter
-	var querySnapshotsTaskResult *cnstypes.CnsSnapshotQueryResult
-	var QuerySnapshotsFunc func(snapshotQueryFilter cnstypes.CnsSnapshotQueryFilter) *cnstypes.CnsSnapshotQueryResult
-
-	if isvSphereVersion70U3orAbove(ctx, c.ServiceContent.About) {
-		// Construct the CNS SnapshotQueryFilter and the function handler of QuerySnapshots
-		QuerySnapshotsFunc = func(snapshotQueryFilter cnstypes.CnsSnapshotQueryFilter) *cnstypes.CnsSnapshotQueryResult {
-			querySnapshotsTask, err := cnsClient.QuerySnapshots(ctx, snapshotQueryFilter)
-			if err != nil {
-				t.Fatalf("Failed to get the task of QuerySnapshots. Error: %+v \n", err)
-			}
-			querySnapshotsTaskInfo, err := GetTaskInfo(ctx, querySnapshotsTask)
-			if err != nil {
-				t.Fatalf("Failed to get the task info of QuerySnapshots. Error: %+v \n", err)
-			}
-			querySnapshotsTaskResult, err := GetQuerySnapshotsTaskResult(ctx, querySnapshotsTaskInfo)
-			if err != nil {
-				t.Fatalf("Failed to get the task result of QuerySnapshots. Error: %+v \n", err)
-			}
-			return querySnapshotsTaskResult
-		}
-
-		// Calls QuerySnapshots before CreateSnapshots
-		snapshotQueryFilter = cnstypes.CnsSnapshotQueryFilter{
-			SnapshotQuerySpecs: []cnstypes.CnsSnapshotQuerySpec{
-				{
-					VolumeId: cnstypes.CnsVolumeId{Id: volumeId},
-				},
-			},
-		}
-		t.Logf("QuerySnapshots before CreateSnapshots, snapshotQueryFilter %+v", snapshotQueryFilter)
-		querySnapshotsTaskResult = QuerySnapshotsFunc(snapshotQueryFilter)
-		t.Logf("snapshotQueryResult %+v", querySnapshotsTaskResult)
-	}
-
-	// Test CreateSnapshot API
-	// Construct the CNS SnapshotCreateSpec list
-	desc := "example-vanilla-block-snapshot"
-	var cnsSnapshotCreateSpecList []cnstypes.CnsSnapshotCreateSpec
-	cnsSnapshotCreateSpec := cnstypes.CnsSnapshotCreateSpec{
-		VolumeId: cnstypes.CnsVolumeId{
-			Id: volumeId,
-		},
-		Description: desc,
-	}
-	cnsSnapshotCreateSpecList = append(cnsSnapshotCreateSpecList, cnsSnapshotCreateSpec)
-	t.Logf("Creating snapshot using the spec: %+v", pretty.Sprint(cnsSnapshotCreateSpecList))
-	createSnapshotsTask, err := cnsClient.CreateSnapshots(ctx, cnsSnapshotCreateSpecList)
-	if err != nil {
-		t.Errorf("Failed to get the task of CreateSnapshots. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	createSnapshotsTaskInfo, err := GetTaskInfo(ctx, createSnapshotsTask)
-	if err != nil {
-		t.Errorf("Failed to get the task info of CreateSnapshots. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	createSnapshotsTaskResult, err := GetTaskResult(ctx, createSnapshotsTaskInfo)
-	if err != nil {
-		t.Errorf("Failed to get the task result of CreateSnapshots. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	createSnapshotsOperationRes := createSnapshotsTaskResult.GetCnsVolumeOperationResult()
-	if createSnapshotsOperationRes.Fault != nil {
-		t.Fatalf("Failed to create snapshots: fault=%+v", createSnapshotsOperationRes.Fault)
-	}
-
-	snapshotCreateResult := interface{}(createSnapshotsTaskResult).(*cnstypes.CnsSnapshotCreateResult)
-	snapshotId := snapshotCreateResult.Snapshot.SnapshotId.Id
-	snapshotCreateTime := snapshotCreateResult.Snapshot.CreateTime
-	t.Logf("CreateSnapshots: Snapshot created successfully. volumeId: %q, snapshot id %q, time stamp %+v, opId: %q", volumeId, snapshotId, snapshotCreateTime, createSnapshotsTaskInfo.ActivationId)
-
-	// Test QuerySnapshots API on 7.0 U3 or above
-	if isvSphereVersion70U3orAbove(ctx, c.ServiceContent.About) {
-		// Calls QuerySnapshots after CreateSnapshots
-		snapshotQueryFilter = cnstypes.CnsSnapshotQueryFilter{
-			SnapshotQuerySpecs: []cnstypes.CnsSnapshotQuerySpec{
-				{
-					VolumeId:   cnstypes.CnsVolumeId{Id: volumeId},
-					SnapshotId: &cnstypes.CnsSnapshotId{Id: snapshotId},
-				},
-			},
-		}
-		t.Logf("QuerySnapshots after CreateSnapshots, snapshotQueryFilter %+v", snapshotQueryFilter)
-		querySnapshotsTaskResult = QuerySnapshotsFunc(snapshotQueryFilter)
-		t.Logf("snapshotQueryResult %+v", querySnapshotsTaskResult)
-	}
-
-	// Test CreateVolumeFromSnapshot functionality by calling CreateVolume with VolumeSource set
-	// Query Volume for capacity
-	var queryVolumeIDList []cnstypes.CnsVolumeId
-	queryVolumeIDList = append(queryVolumeIDList, cnstypes.CnsVolumeId{Id: volumeId})
-	queryFilter.VolumeIds = queryVolumeIDList
-	t.Logf("CreateVolumeFromSnapshot: calling QueryVolume using queryFilter: %+v", pretty.Sprint(queryFilter))
-	queryResult, err = cnsClient.QueryVolume(ctx, queryFilter)
-	if err != nil {
-		t.Errorf("Failed to query volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	var snapshotSize int64
-	if len(queryResult.Volumes) > 0 {
-		snapshotSize = queryResult.Volumes[0].BackingObjectDetails.GetCnsBackingObjectDetails().CapacityInMb
-	} else {
-		msg := fmt.Sprintf("failed to get the snapshot size by querying volume: %q", volumeId)
-		t.Fatal(msg)
-	}
-	t.Logf("CreateVolumeFromSnapshot: Successfully Queried Volumes. queryResult: %+v", pretty.Sprint(queryResult))
-
-	// Construct the CNS VolumeCreateSpec list
-	cnsCreateVolumeFromSnapshotCreateSpec := cnstypes.CnsVolumeCreateSpec{
-		Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0-create-from-snapshot",
-		VolumeType: string(cnstypes.CnsVolumeTypeBlock),
-		Datastores: dsList,
-		Metadata: cnstypes.CnsVolumeMetadata{
-			ContainerCluster: containerCluster,
-		},
-		BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
-			CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
-				CapacityInMb: snapshotSize,
-			},
-		},
-		VolumeSource: &cnstypes.CnsSnapshotVolumeSource{
-			VolumeId: cnstypes.CnsVolumeId{
-				Id: volumeId,
-			},
-			SnapshotId: cnstypes.CnsSnapshotId{
-				Id: snapshotId,
-			},
-		},
-	}
-	var cnsCreateVolumeFromSnapshotCreateSpecList []cnstypes.CnsVolumeCreateSpec
-	cnsCreateVolumeFromSnapshotCreateSpecList = append(cnsCreateVolumeFromSnapshotCreateSpecList, cnsCreateVolumeFromSnapshotCreateSpec)
-	t.Logf("Creating volume from snapshot using the spec: %+v", pretty.Sprint(cnsCreateVolumeFromSnapshotCreateSpec))
-	createVolumeFromSnapshotTask, err := cnsClient.CreateVolume(ctx, cnsCreateVolumeFromSnapshotCreateSpecList)
-	if err != nil {
-		t.Errorf("Failed to create volume from snapshot. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	createVolumeFromSnapshotTaskInfo, err := GetTaskInfo(ctx, createVolumeFromSnapshotTask)
-	if err != nil {
-		t.Errorf("Failed to create volume from snapshot. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	createVolumeFromSnapshotTaskResult, err := GetTaskResult(ctx, createVolumeFromSnapshotTaskInfo)
-	if err != nil {
-		t.Errorf("Failed to create volume from snapshot. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	if createVolumeFromSnapshotTaskResult == nil {
-		t.Fatalf("Empty create task results")
-		t.FailNow()
-	}
-	createVolumeFromSnapshotOperationRes := createVolumeFromSnapshotTaskResult.GetCnsVolumeOperationResult()
-	if createVolumeFromSnapshotOperationRes.Fault != nil {
-		t.Fatalf("Failed to create volume from snapshot: fault=%+v", createVolumeFromSnapshotOperationRes.Fault)
-	}
-	createVolumeFromSnapshotVolumeId := createVolumeFromSnapshotOperationRes.VolumeId.Id
-	createVolumeFromSnapshotResult := (createVolumeFromSnapshotTaskResult).(*cnstypes.CnsVolumeCreateResult)
-	t.Logf("createVolumeFromSnapshotResult %+v", createVolumeFromSnapshotResult)
-	t.Logf("Volume created from snapshot %s sucessfully. volumeId: %s", snapshotId, createVolumeFromSnapshotVolumeId)
-
-	//  Clean up volume created from snapshot above
-	var deleteVolumeFromSnapshotVolumeIDList []cnstypes.CnsVolumeId
-	deleteVolumeFromSnapshotVolumeIDList = append(deleteVolumeFromSnapshotVolumeIDList, cnstypes.CnsVolumeId{Id: createVolumeFromSnapshotVolumeId})
-	t.Logf("Deleting volume: %+v", deleteVolumeFromSnapshotVolumeIDList)
-	deleteVolumeFromSnapshotTask, err := cnsClient.DeleteVolume(ctx, deleteVolumeFromSnapshotVolumeIDList, true)
-	if err != nil {
-		t.Errorf("Failed to delete volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	deleteVolumeFromSnapshotTaskInfo, err := GetTaskInfo(ctx, deleteVolumeFromSnapshotTask)
-	if err != nil {
-		t.Errorf("Failed to delete volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	deleteVolumeFromSnapshotTaskResult, err := GetTaskResult(ctx, deleteVolumeFromSnapshotTaskInfo)
-	if err != nil {
-		t.Errorf("Failed to delete volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	if deleteVolumeFromSnapshotTaskResult == nil {
-		t.Fatalf("Empty delete task results")
-		t.FailNow()
-	}
-	deleteVolumeFromSnapshotOperationRes := deleteVolumeFromSnapshotTaskResult.GetCnsVolumeOperationResult()
-	if deleteVolumeFromSnapshotOperationRes.Fault != nil {
-		t.Fatalf("Failed to delete volume: fault=%+v", deleteVolumeFromSnapshotOperationRes.Fault)
-	}
-	t.Logf("Volume: %q deleted sucessfully", createVolumeFromSnapshotVolumeId)
-
-	// Test DeleteSnapshot API
-	// Construct the CNS SnapshotDeleteSpec list
-	var cnsSnapshotDeleteSpecList []cnstypes.CnsSnapshotDeleteSpec
-	cnsSnapshotDeleteSpec := cnstypes.CnsSnapshotDeleteSpec{
-		VolumeId: cnstypes.CnsVolumeId{
-			Id: volumeId,
-		},
-		SnapshotId: cnstypes.CnsSnapshotId{
-			Id: snapshotId,
-		},
-	}
-	cnsSnapshotDeleteSpecList = append(cnsSnapshotDeleteSpecList, cnsSnapshotDeleteSpec)
-	t.Logf("Deleting snapshot using the spec: %+v", pretty.Sprint(cnsSnapshotDeleteSpecList))
-	deleteSnapshotsTask, err := cnsClient.DeleteSnapshots(ctx, cnsSnapshotDeleteSpecList)
-	if err != nil {
-		t.Errorf("Failed to get the task of DeleteSnapshots. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	deleteSnapshotsTaskInfo, err := GetTaskInfo(ctx, deleteSnapshotsTask)
-	if err != nil {
-		t.Errorf("Failed to get the task info of DeleteSnapshots. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-
-	deleteSnapshotsTaskResult, err := GetTaskResult(ctx, deleteSnapshotsTaskInfo)
-	if err != nil {
-		t.Errorf("Failed to get the task result of DeleteSnapshots. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-
-	deleteSnapshotsOperationRes := deleteSnapshotsTaskResult.GetCnsVolumeOperationResult()
-	if deleteSnapshotsOperationRes.Fault != nil {
-		t.Fatalf("Failed to delete snapshots: fault=%+v", deleteSnapshotsOperationRes.Fault)
-	}
-
-	snapshotDeleteResult := interface{}(deleteSnapshotsTaskResult).(*cnstypes.CnsSnapshotDeleteResult)
-	t.Logf("DeleteSnapshots: Snapshot deleted successfully. volumeId: %q, snapshot id %q, opId: %q", volumeId, snapshotDeleteResult.SnapshotId, deleteSnapshotsTaskInfo.ActivationId)
-
-	// Test Relocate API
-	// Relocate API is not supported on ReleaseVSAN67u3 and ReleaseVSAN70
-	// This API is available on vSphere 7.0u1 onward
-	if cnsClient.Version != ReleaseVSAN67u3 && cnsClient.Version != ReleaseVSAN70 && datastoreForMigration != "" {
-		migrationDS, err := finder.Datastore(ctx, datastoreForMigration)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Logf("Relocating volume %v to datastore %+v", pretty.Sprint(volumeId), migrationDS.Reference())
-		relocateSpec := cnstypes.NewCnsBlockVolumeRelocateSpec(volumeId, migrationDS.Reference())
-		relocateTask, err := cnsClient.RelocateVolume(ctx, relocateSpec)
-		if err != nil {
-			t.Errorf("Failed to migrate volume with Relocate API. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		relocateTaskInfo, err := GetTaskInfo(ctx, relocateTask)
-		if err != nil {
-			t.Errorf("Failed to get info of task returned by Relocate API. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		taskResults, err := GetTaskResultArray(ctx, relocateTaskInfo)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, taskResult := range taskResults {
-			res := taskResult.GetCnsVolumeOperationResult()
-			if res.Fault != nil {
-				t.Fatalf("Relocation failed due to fault: %+v", res.Fault)
-			}
-			t.Logf("Successfully Relocated volume. Relocate task info result: %+v", pretty.Sprint(taskResult))
-		}
-	}
-
-	// Test ExtendVolume API
-	var newCapacityInMb int64 = 10240
-	var cnsVolumeExtendSpecList []cnstypes.CnsVolumeExtendSpec
-	cnsVolumeExtendSpec := cnstypes.CnsVolumeExtendSpec{
-		VolumeId: cnstypes.CnsVolumeId{
-			Id: volumeId,
-		},
-		CapacityInMb: newCapacityInMb,
-	}
-	cnsVolumeExtendSpecList = append(cnsVolumeExtendSpecList, cnsVolumeExtendSpec)
-	t.Logf("Extending volume using the spec: %+v", pretty.Sprint(cnsVolumeExtendSpecList))
-	extendTask, err := cnsClient.ExtendVolume(ctx, cnsVolumeExtendSpecList)
-	if err != nil {
-		t.Errorf("Failed to extend volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	extendTaskInfo, err := GetTaskInfo(ctx, extendTask)
-	if err != nil {
-		t.Errorf("Failed to extend volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	extendTaskResult, err := GetTaskResult(ctx, extendTaskInfo)
-	if err != nil {
-		t.Errorf("Failed to extend volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	if extendTaskResult == nil {
-		t.Fatalf("Empty extend task results")
-		t.FailNow()
-	}
-	extendVolumeOperationRes := extendTaskResult.GetCnsVolumeOperationResult()
-	if extendVolumeOperationRes.Fault != nil {
-		t.Fatalf("Failed to extend volume: fault=%+v", extendVolumeOperationRes.Fault)
-	}
-	extendVolumeId := extendVolumeOperationRes.VolumeId.Id
-	t.Logf("Volume extended sucessfully. Volume ID: %s", extendVolumeId)
-
-	// Verify volume is extended to the specified size
-	t.Logf("Calling QueryVolume after ExtendVolume using queryFilter: %+v", queryFilter)
-	queryResult, err = cnsClient.QueryVolume(ctx, queryFilter)
-	if err != nil {
-		t.Errorf("Failed to query volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	t.Logf("Successfully Queried Volumes after ExtendVolume. queryResult: %+v", pretty.Sprint(queryResult))
-	queryCapacity := queryResult.Volumes[0].BackingObjectDetails.(*cnstypes.CnsBlockBackingDetails).CapacityInMb
-	if newCapacityInMb != queryCapacity {
-		t.Errorf("After extend volume %s, expected new volume size is %d, but actual volume size is %d.", extendVolumeId, newCapacityInMb, queryCapacity)
-	} else {
-		t.Logf("Volume extended sucessfully to the new size. Volume ID: %s New Size: %d", extendVolumeId, newCapacityInMb)
-	}
-
-	// Test UpdateVolumeMetadata
-	var updateSpecList []cnstypes.CnsVolumeMetadataUpdateSpec
-
-	var metadataList []cnstypes.BaseCnsEntityMetadata
-	newLabels := []vim25types.KeyValue{
-		{
-			Key:   "testLabel",
-			Value: "testValue",
-		},
-	}
-	pvmetadata := &cnstypes.CnsKubernetesEntityMetadata{
-		CnsEntityMetadata: cnstypes.CnsEntityMetadata{
-			DynamicData: vim25types.DynamicData{},
-			EntityName:  "pvc-53465372-5c12-4818-96f8-0ace4f4fd116",
-			Labels:      newLabels,
-			Delete:      false,
-			ClusterID:   "demo-cluster-id",
-		},
-		EntityType: string(cnstypes.CnsKubernetesEntityTypePV),
-		Namespace:  "",
-	}
-	metadataList = append(metadataList, cnstypes.BaseCnsEntityMetadata(pvmetadata))
-
-	pvcmetadata := &cnstypes.CnsKubernetesEntityMetadata{
-		CnsEntityMetadata: cnstypes.CnsEntityMetadata{
-			DynamicData: vim25types.DynamicData{},
-			EntityName:  "example-vanilla-block-pvc",
-			Labels:      newLabels,
-			Delete:      false,
-			ClusterID:   "demo-cluster-id",
-		},
-		EntityType: string(cnstypes.CnsKubernetesEntityTypePVC),
-		Namespace:  "default",
-		ReferredEntity: []cnstypes.CnsKubernetesEntityReference{
-			{
-				EntityType: string(cnstypes.CnsKubernetesEntityTypePV),
-				EntityName: "pvc-53465372-5c12-4818-96f8-0ace4f4fd116",
-				Namespace:  "",
-				ClusterID:  "demo-cluster-id",
-			},
-		},
-	}
-	metadataList = append(metadataList, cnstypes.BaseCnsEntityMetadata(pvcmetadata))
-
-	podmetadata := &cnstypes.CnsKubernetesEntityMetadata{
-		CnsEntityMetadata: cnstypes.CnsEntityMetadata{
-			DynamicData: vim25types.DynamicData{},
-			EntityName:  "example-pod",
-			Delete:      false,
-			ClusterID:   "demo-cluster-id",
-		},
-		EntityType: string(cnstypes.CnsKubernetesEntityTypePOD),
-		Namespace:  "default",
-		ReferredEntity: []cnstypes.CnsKubernetesEntityReference{
-			{
-				EntityType: string(cnstypes.CnsKubernetesEntityTypePVC),
-				EntityName: "example-vanilla-block-pvc",
-				Namespace:  "default",
-				ClusterID:  "demo-cluster-id",
-			},
-		},
-	}
-	metadataList = append(metadataList, cnstypes.BaseCnsEntityMetadata(podmetadata))
-
-	cnsVolumeMetadataUpdateSpec := cnstypes.CnsVolumeMetadataUpdateSpec{
-		VolumeId: cnstypes.CnsVolumeId{Id: volumeId},
-		Metadata: cnstypes.CnsVolumeMetadata{
-			DynamicData:           vim25types.DynamicData{},
-			ContainerCluster:      containerCluster,
-			EntityMetadata:        metadataList,
-			ContainerClusterArray: containerClusterArray,
-		},
-	}
-	t.Logf("Updating volume using the spec: %+v", cnsVolumeMetadataUpdateSpec)
-	updateSpecList = append(updateSpecList, cnsVolumeMetadataUpdateSpec)
-	updateTask, err := cnsClient.UpdateVolumeMetadata(ctx, updateSpecList)
-	if err != nil {
-		t.Errorf("Failed to update volume metadata. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	updateTaskInfo, err := GetTaskInfo(ctx, updateTask)
-	if err != nil {
-		t.Errorf("Failed to update volume metadata. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	updateTaskResult, err := GetTaskResult(ctx, updateTaskInfo)
-	if err != nil {
-		t.Errorf("Failed to update volume metadata. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	if updateTaskResult == nil {
-		t.Fatalf("Empty update task results")
-		t.FailNow()
-	}
-	updateVolumeOperationRes := updateTaskResult.GetCnsVolumeOperationResult()
-	if updateVolumeOperationRes.Fault != nil {
-		t.Fatalf("Failed to update volume metadata: fault=%+v", updateVolumeOperationRes.Fault)
-	} else {
-		t.Logf("Successfully updated volume metadata")
-	}
-
-	t.Logf("Calling QueryVolume using queryFilter: %+v", pretty.Sprint(queryFilter))
-	queryResult, err = cnsClient.QueryVolume(ctx, queryFilter)
-	if err != nil {
-		t.Errorf("Failed to query volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	t.Logf("Successfully Queried Volumes. queryResult: %+v", pretty.Sprint(queryResult))
-
-	// Test QueryAll
-	querySelection := cnstypes.CnsQuerySelection{
-		Names: []string{
-			string(cnstypes.CnsQuerySelectionName_VOLUME_NAME),
-			string(cnstypes.CnsQuerySelectionName_VOLUME_TYPE),
-			string(cnstypes.CnsQuerySelectionName_DATASTORE_URL),
-			string(cnstypes.CnsQuerySelectionName_POLICY_ID),
-			string(cnstypes.CnsQuerySelectionName_HEALTH_STATUS),
-			string(cnstypes.CnsQuerySelectionName_BACKING_OBJECT_DETAILS),
-			string(cnstypes.CnsQuerySelectionName_COMPLIANCE_STATUS),
-			string(cnstypes.CnsQuerySelectionName_DATASTORE_ACCESSIBILITY_STATUS),
-		},
-	}
-	queryResult, err = cnsClient.QueryAllVolume(ctx, cnstypes.CnsQueryFilter{}, querySelection)
-	if err != nil {
-		t.Errorf("Failed to query all volumes. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	t.Logf("Successfully Queried all Volumes. queryResult: %+v", pretty.Sprint(queryResult))
-
-	// Create a VM to test Attach Volume API.
-	virtualMachineConfigSpec := vim25types.VirtualMachineConfigSpec{
-		Name: "test-node-vm",
-		Files: &vim25types.VirtualMachineFileInfo{
-			VmPathName: "[" + datastore + "]",
-		},
-		NumCPUs:  1,
-		MemoryMB: 4,
-		DeviceChange: []vim25types.BaseVirtualDeviceConfigSpec{
-			&vim25types.VirtualDeviceConfigSpec{
-				Operation: vim25types.VirtualDeviceConfigSpecOperationAdd,
-				Device: &vim25types.ParaVirtualSCSIController{
-					VirtualSCSIController: vim25types.VirtualSCSIController{
-						SharedBus: vim25types.VirtualSCSISharingNoSharing,
-						VirtualController: vim25types.VirtualController{
-							BusNumber: 0,
-							VirtualDevice: vim25types.VirtualDevice{
-								Key: 1000,
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	defaultFolder, err := finder.DefaultFolder(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var resourcePool *object.ResourcePool
-	if resporcePoolPath == "" {
-		resourcePool, err = finder.DefaultResourcePool(ctx)
-	} else {
-		resourcePool, err = finder.ResourcePool(ctx, resporcePoolPath)
-	}
-	if err != nil {
-		t.Errorf("Error occurred while getting DefaultResourcePool. err: %+v", err)
-		t.Fatal(err)
-	}
-	task, err := defaultFolder.CreateVM(ctx, virtualMachineConfigSpec, resourcePool, nil)
-	if err != nil {
-		t.Errorf("Failed to create VM. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-
-	vmTaskInfo, err := task.WaitForResult(ctx, nil)
-	if err != nil {
-		t.Errorf("Error occurred while waiting for create VM task result. err: %+v", err)
-		t.Fatal(err)
-	}
-
-	vmRef := vmTaskInfo.Result.(object.Reference)
-	t.Logf("Node VM created sucessfully. vmRef: %+v", vmRef.Reference())
-
-	nodeVM := object.NewVirtualMachine(cnsClient.Vim25Client, vmRef.Reference())
-	defer nodeVM.Destroy(ctx)
-
-	// Test AttachVolume API
-	var cnsVolumeAttachSpecList []cnstypes.CnsVolumeAttachDetachSpec
-	cnsVolumeAttachSpec := cnstypes.CnsVolumeAttachDetachSpec{
-		VolumeId: cnstypes.CnsVolumeId{
-			Id: volumeId,
-		},
-		Vm: nodeVM.Reference(),
-	}
-	cnsVolumeAttachSpecList = append(cnsVolumeAttachSpecList, cnsVolumeAttachSpec)
-	t.Logf("Attaching volume using the spec: %+v", cnsVolumeAttachSpec)
-	attachTask, err := cnsClient.AttachVolume(ctx, cnsVolumeAttachSpecList)
-	if err != nil {
-		t.Errorf("Failed to attach volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	attachTaskInfo, err := GetTaskInfo(ctx, attachTask)
-	if err != nil {
-		t.Errorf("Failed to attach volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	attachTaskResult, err := GetTaskResult(ctx, attachTaskInfo)
-	if err != nil {
-		t.Errorf("Failed to attach volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	if attachTaskResult == nil {
-		t.Fatalf("Empty attach task results")
-		t.FailNow()
-	}
-	attachVolumeOperationRes := attachTaskResult.GetCnsVolumeOperationResult()
-	if attachVolumeOperationRes.Fault != nil {
-		t.Fatalf("Failed to attach volume: fault=%+v", attachVolumeOperationRes.Fault)
-	}
-	diskUUID := interface{}(attachTaskResult).(*cnstypes.CnsVolumeAttachResult).DiskUUID
-	t.Logf("Volume attached sucessfully. Disk UUID: %s", diskUUID)
-
-	// Re-Attach same volume to the same node and expect ResourceInUse fault
-	t.Logf("Re-Attaching volume using the spec: %+v", cnsVolumeAttachSpec)
-	attachTask, err = cnsClient.AttachVolume(ctx, cnsVolumeAttachSpecList)
-	if err != nil {
-		t.Errorf("Failed to attach volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	attachTaskInfo, err = GetTaskInfo(ctx, attachTask)
-	if err != nil {
-		t.Errorf("Failed to attach volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	attachTaskResult, err = GetTaskResult(ctx, attachTaskInfo)
-	if err != nil {
-		t.Errorf("Failed to attach volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	if attachTaskResult == nil {
-		t.Fatalf("Empty attach task results")
-		t.FailNow()
-	}
-	reAttachVolumeOperationRes := attachTaskResult.GetCnsVolumeOperationResult()
-	if reAttachVolumeOperationRes.Fault != nil {
-		t.Logf("reAttachVolumeOperationRes.Fault: %+v", pretty.Sprint(reAttachVolumeOperationRes.Fault))
-		_, ok := reAttachVolumeOperationRes.Fault.Fault.(*vim25types.ResourceInUse)
-		if !ok {
-			t.Fatalf("Fault is not ResourceInUse")
-		}
-	} else {
-		t.Fatalf("re-attach same volume should fail with ResourceInUse fault")
-	}
-
-	// Test DetachVolume API
-	var cnsVolumeDetachSpecList []cnstypes.CnsVolumeAttachDetachSpec
-	cnsVolumeDetachSpec := cnstypes.CnsVolumeAttachDetachSpec{
-		VolumeId: cnstypes.CnsVolumeId{
-			Id: volumeId,
-		},
-		Vm: nodeVM.Reference(),
-	}
-	cnsVolumeDetachSpecList = append(cnsVolumeDetachSpecList, cnsVolumeDetachSpec)
-	t.Logf("Detaching volume using the spec: %+v", cnsVolumeDetachSpec)
-	detachTask, err := cnsClient.DetachVolume(ctx, cnsVolumeDetachSpecList)
-	if err != nil {
-		t.Errorf("Failed to detach volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	detachTaskInfo, err := GetTaskInfo(ctx, detachTask)
-	if err != nil {
-		t.Errorf("Failed to detach volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	detachTaskResult, err := GetTaskResult(ctx, detachTaskInfo)
-	if err != nil {
-		t.Errorf("Failed to detach volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	if detachTaskResult == nil {
-		t.Fatalf("Empty detach task results")
-		t.FailNow()
-	}
-	detachVolumeOperationRes := detachTaskResult.GetCnsVolumeOperationResult()
-	if detachVolumeOperationRes.Fault != nil {
-		t.Fatalf("Failed to detach volume: fault=%+v", detachVolumeOperationRes.Fault)
-	}
-	t.Logf("Volume detached sucessfully")
-
-	// Test QueryVolumeAsync API only for vSphere version 7.0.3 onwards
-	if isvSphereVersion70U3orAbove(ctx, c.ServiceContent.About) {
-		queryVolumeAsyncTask, err := cnsClient.QueryVolumeAsync(ctx, queryFilter, nil)
-		if err != nil {
-			t.Errorf("Failed to query volumes with QueryVolumeAsync. Error: %+v \n", err)
-		}
-		queryVolumeAsyncTaskInfo, err := GetTaskInfo(ctx, queryVolumeAsyncTask)
-		if err != nil {
-			t.Errorf("Failed to query volumes with QueryVolumeAsync. Error: %+v \n", err)
-		}
-		queryVolumeAsyncTaskResults, err := GetTaskResultArray(ctx, queryVolumeAsyncTaskInfo)
-		if err != nil {
-			t.Errorf("Failed to query volumes with QueryVolumeAsync. Error: %+v \n", err)
-		}
-		for _, queryVolumeAsyncTaskResult := range queryVolumeAsyncTaskResults {
-			queryVolumeAsyncOperationRes := queryVolumeAsyncTaskResult.GetCnsVolumeOperationResult()
-			if queryVolumeAsyncOperationRes.Fault != nil {
-				t.Fatalf("Failed to query volumes with QueryVolumeAsync. fault=%+v", queryVolumeAsyncOperationRes.Fault)
-			}
-			t.Logf("Successfully queried Volume using queryAsync API. queryVolumeAsyncTaskResult: %+v", pretty.Sprint(queryVolumeAsyncTaskResult))
-		}
-	}
-	// Test DeleteVolume API
-	t.Logf("Deleting volume: %+v", volumeIDList)
-	deleteTask, err := cnsClient.DeleteVolume(ctx, volumeIDList, true)
-	if err != nil {
-		t.Errorf("Failed to delete volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	deleteTaskInfo, err := GetTaskInfo(ctx, deleteTask)
-	if err != nil {
-		t.Errorf("Failed to delete volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	deleteTaskResult, err := GetTaskResult(ctx, deleteTaskInfo)
-	if err != nil {
-		t.Errorf("Failed to delete volume. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	if deleteTaskResult == nil {
-		t.Fatalf("Empty delete task results")
-		t.FailNow()
-	}
-	deleteVolumeOperationRes := deleteTaskResult.GetCnsVolumeOperationResult()
-	if deleteVolumeOperationRes.Fault != nil {
-		t.Fatalf("Failed to delete volume: fault=%+v", deleteVolumeOperationRes.Fault)
-	}
-	t.Logf("Volume: %q deleted sucessfully", volumeId)
-
-	if run_fileshare_tests == "true" && cnsClient.Version != ReleaseVSAN67u3 {
-		// Test creating vSAN file-share Volume
-		var cnsFileVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
-		vSANFileCreateSpec := &cnstypes.CnsVSANFileCreateSpec{
-			SoftQuotaInMb: 5120,
-			Permission: []vsanfstypes.VsanFileShareNetPermission{
-				{
-					Ips:         "*",
-					Permissions: vsanfstypes.VsanFileShareAccessTypeREAD_WRITE,
-					AllowRoot:   true,
-				},
-			},
-		}
-
-		cnsFileVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
-			Name:       "pvc-file-share-volume",
-			VolumeType: string(cnstypes.CnsVolumeTypeFile),
-			Datastores: dsList,
-			Metadata: cnstypes.CnsVolumeMetadata{
-				ContainerCluster:      containerCluster,
-				ContainerClusterArray: containerClusterArray,
-			},
-			BackingObjectDetails: &cnstypes.CnsVsanFileShareBackingDetails{
-				CnsFileBackingDetails: cnstypes.CnsFileBackingDetails{
-					CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
-						CapacityInMb: 5120,
-					},
-				},
-			},
-			CreateSpec: vSANFileCreateSpec,
-		}
-		cnsFileVolumeCreateSpecList = append(cnsFileVolumeCreateSpecList, cnsFileVolumeCreateSpec)
-		t.Logf("Creating CNS file volume using the spec: %+v", cnsFileVolumeCreateSpec)
-		createTask, err = cnsClient.CreateVolume(ctx, cnsFileVolumeCreateSpecList)
-		if err != nil {
-			t.Errorf("Failed to create vsan fileshare volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		createTaskInfo, err = GetTaskInfo(ctx, createTask)
-		if err != nil {
-			t.Errorf("Failed to create Fileshare volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		createTaskResult, err = GetTaskResult(ctx, createTaskInfo)
-		if err != nil {
-			t.Errorf("Failed to create Fileshare volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		if createTaskResult == nil {
-			t.Fatalf("Empty create task results")
-			t.FailNow()
-		}
-		createVolumeOperationRes = createTaskResult.GetCnsVolumeOperationResult()
-		if createVolumeOperationRes.Fault != nil {
-			t.Fatalf("Failed to create Fileshare volume: fault=%+v", createVolumeOperationRes.Fault)
-		}
-		filevolumeId := createVolumeOperationRes.VolumeId.Id
-		t.Logf("Fileshare volume created sucessfully. filevolumeId: %s", filevolumeId)
-
-		// Test QueryVolume API
-		volumeIDList = []cnstypes.CnsVolumeId{{Id: filevolumeId}}
-		queryFilter.VolumeIds = volumeIDList
-		t.Logf("Calling QueryVolume using queryFilter: %+v", queryFilter)
-		queryResult, err = cnsClient.QueryVolume(ctx, queryFilter)
-		if err != nil {
-			t.Errorf("Failed to query volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		t.Logf("Successfully Queried Volumes. queryResult: %+v", queryResult)
-		fileBackingInfo := queryResult.Volumes[0].BackingObjectDetails.(*cnstypes.CnsVsanFileShareBackingDetails)
-		t.Logf("File Share Name: %s with accessPoints: %+v", fileBackingInfo.Name, fileBackingInfo.AccessPoints)
-
-		// Test add read-only permissions using Configure ACLs
-		netPerms := make([]vsanfstypes.VsanFileShareNetPermission, 0)
-		netPerms = append(netPerms, vsanfstypes.VsanFileShareNetPermission{
-			Ips:         "192.168.124.2",
-			Permissions: "READ_ONLY",
-		})
-
-		vSanNFSACLEntry := make([]cnstypes.CnsNFSAccessControlSpec, 0)
-		vSanNFSACLEntry = append(vSanNFSACLEntry, cnstypes.CnsNFSAccessControlSpec{
-			Permission: netPerms,
-		})
-
-		volumeID := cnstypes.CnsVolumeId{
-			Id: filevolumeId,
-		}
-		aclSpec := cnstypes.CnsVolumeACLConfigureSpec{
-			VolumeId:              volumeID,
-			AccessControlSpecList: vSanNFSACLEntry,
-		}
-		t.Logf("Invoking ConfigureVolumeACLs using the spec: %+v", pretty.Sprint(aclSpec))
-		aclTask, err := cnsClient.ConfigureVolumeACLs(ctx, aclSpec)
-		if err != nil {
-			t.Errorf("Failed to configure VolumeACLs. Error: %+v", err)
-			t.Fatal(err)
-		}
-		aclTaskInfo, err := GetTaskInfo(ctx, aclTask)
-		if err != nil {
-			t.Errorf("Failed to configure VolumeACLs. Error: %+v", err)
-			t.Fatal(err)
-		}
-		aclTaskResult, err := GetTaskResult(ctx, aclTaskInfo)
-		if err != nil {
-			t.Errorf("Failed to configure VolumeACLs. Error: %+v", err)
-			t.Fatal(err)
-		}
-		if aclTaskResult == nil {
-			t.Fatalf("Empty configure VolumeACLs task results")
-			t.FailNow()
-		}
-
-		// Test to revoke all permissions using Configure ACLs
-		netPerms = make([]vsanfstypes.VsanFileShareNetPermission, 0)
-		netPerms = append(netPerms, vsanfstypes.VsanFileShareNetPermission{
-			Ips:         "192.168.124.2",
-			Permissions: "READ_ONLY",
-		})
-
-		vSanNFSACLEntry = make([]cnstypes.CnsNFSAccessControlSpec, 0)
-		vSanNFSACLEntry = append(vSanNFSACLEntry, cnstypes.CnsNFSAccessControlSpec{
-			Permission: netPerms,
-			Delete:     true,
-		})
-
-		aclSpec = cnstypes.CnsVolumeACLConfigureSpec{
-			VolumeId:              volumeID,
-			AccessControlSpecList: vSanNFSACLEntry,
-		}
-		t.Logf("Invoking ConfigureVolumeACLs using the spec: %+v", pretty.Sprint(aclSpec))
-		aclTask, err = cnsClient.ConfigureVolumeACLs(ctx, aclSpec)
-		if err != nil {
-			t.Errorf("Failed to configure VolumeACLs. Error: %+v", err)
-			t.Fatal(err)
-		}
-		aclTaskInfo, err = GetTaskInfo(ctx, aclTask)
-		if err != nil {
-			t.Errorf("Failed to configure VolumeACLs. Error: %+v", err)
-			t.Fatal(err)
-		}
-		aclTaskResult, err = GetTaskResult(ctx, aclTaskInfo)
-		if err != nil {
-			t.Errorf("Failed to configure VolumeACLs. Error: %+v", err)
-			t.Fatal(err)
-		}
-		if aclTaskResult == nil {
-			t.Fatalf("Empty configure VolumeACLs task results")
-			t.FailNow()
-		}
-
-		// Test Deleting vSAN file-share Volume
-		var fileVolumeIDList []cnstypes.CnsVolumeId
-		fileVolumeIDList = append(fileVolumeIDList, cnstypes.CnsVolumeId{Id: filevolumeId})
-		t.Logf("Deleting fileshare volume: %+v", fileVolumeIDList)
-		deleteTask, err = cnsClient.DeleteVolume(ctx, fileVolumeIDList, true)
-		if err != nil {
-			t.Errorf("Failed to delete fileshare volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		deleteTaskInfo, err = GetTaskInfo(ctx, deleteTask)
-		if err != nil {
-			t.Errorf("Failed to delete fileshare volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		deleteTaskResult, err = GetTaskResult(ctx, deleteTaskInfo)
-		if err != nil {
-			t.Errorf("Failed to delete fileshare volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		if deleteTaskResult == nil {
-			t.Fatalf("Empty delete task results")
-			t.FailNow()
-		}
-		deleteVolumeOperationRes = deleteTaskResult.GetCnsVolumeOperationResult()
-		if deleteVolumeOperationRes.Fault != nil {
-			t.Fatalf("Failed to delete fileshare volume: fault=%+v", deleteVolumeOperationRes.Fault)
-		}
-		t.Logf("fileshare volume:%q deleted sucessfully", filevolumeId)
-	}
-	if backingDiskURLPath != "" && cnsClient.Version != ReleaseVSAN67u3 && cnsClient.Version != ReleaseVSAN70 {
-		// Test CreateVolume API with existing VMDK
-		var cnsVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
-		cnsVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
-			Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0",
-			VolumeType: string(cnstypes.CnsVolumeTypeBlock),
-			Metadata: cnstypes.CnsVolumeMetadata{
-				ContainerCluster: containerCluster,
-			},
-			BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
-				BackingDiskUrlPath: backingDiskURLPath,
-			},
-		}
-		cnsVolumeCreateSpecList = append(cnsVolumeCreateSpecList, cnsVolumeCreateSpec)
-		t.Logf("Creating volume using the spec: %+v", pretty.Sprint(cnsVolumeCreateSpec))
-		createTask, err := cnsClient.CreateVolume(ctx, cnsVolumeCreateSpecList)
-		if err != nil {
-			t.Errorf("Failed to create volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		createTaskInfo, err := GetTaskInfo(ctx, createTask)
-		if err != nil {
-			t.Errorf("Failed to create volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		createTaskResult, err := GetTaskResult(ctx, createTaskInfo)
-		if err != nil {
-			t.Errorf("Failed to create volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		if createTaskResult == nil {
-			t.Fatalf("Empty create task results")
-			t.FailNow()
-		}
-		createVolumeOperationRes := createTaskResult.GetCnsVolumeOperationResult()
-		var volumeID string
-		if createVolumeOperationRes.Fault != nil {
-			t.Logf("Failed to create volume: fault=%+v", createVolumeOperationRes.Fault)
-			fault, ok := createVolumeOperationRes.Fault.Fault.(cnstypes.CnsAlreadyRegisteredFault)
-			if !ok {
-				t.Fatalf("Fault is not CnsAlreadyRegisteredFault")
-			} else {
-				t.Logf("Fault is CnsAlreadyRegisteredFault. backingDiskURLPath: %s is already registered", backingDiskURLPath)
-				volumeID = fault.VolumeId.Id
-			}
-		} else {
-			volumeID = createVolumeOperationRes.VolumeId.Id
-			t.Logf("Volume created sucessfully with backingDiskURLPath: %s. volumeId: %s", backingDiskURLPath, volumeID)
-
-			// Test re creating volume using BACKING_DISK_URL_PATH
-			var reCreateCnsVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
-			reCreateCnsVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
-				Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0",
-				VolumeType: string(cnstypes.CnsVolumeTypeBlock),
-				Metadata: cnstypes.CnsVolumeMetadata{
-					ContainerCluster: containerCluster,
-				},
-				BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
-					BackingDiskUrlPath: backingDiskURLPath,
-				},
-			}
-
-			reCreateCnsVolumeCreateSpecList = append(reCreateCnsVolumeCreateSpecList, reCreateCnsVolumeCreateSpec)
-			t.Logf("Creating volume using the spec: %+v", pretty.Sprint(reCreateCnsVolumeCreateSpec))
-			recreateTask, err := cnsClient.CreateVolume(ctx, reCreateCnsVolumeCreateSpecList)
-			if err != nil {
-				t.Errorf("Failed to create volume. Error: %+v \n", err)
-				t.Fatal(err)
-			}
-			reCreateTaskInfo, err := GetTaskInfo(ctx, recreateTask)
-			if err != nil {
-				t.Errorf("Failed to create volume. Error: %+v \n", err)
-				t.Fatal(err)
-			}
-			reCreateTaskResult, err := GetTaskResult(ctx, reCreateTaskInfo)
-			if err != nil {
-				t.Errorf("Failed to create volume. Error: %+v \n", err)
-				t.Fatal(err)
-			}
-			if reCreateTaskResult == nil {
-				t.Fatalf("Empty create task results")
-				t.FailNow()
-			}
-			reCreateVolumeOperationRes := reCreateTaskResult.GetCnsVolumeOperationResult()
-			t.Logf("reCreateVolumeOperationRes.: %+v", pretty.Sprint(reCreateVolumeOperationRes))
-			if reCreateVolumeOperationRes.Fault != nil {
-				t.Logf("Failed to create volume: fault=%+v", reCreateVolumeOperationRes.Fault)
-				_, ok := reCreateVolumeOperationRes.Fault.Fault.(cnstypes.CnsAlreadyRegisteredFault)
-				if !ok {
-					t.Fatalf("Fault is not CnsAlreadyRegisteredFault")
-				} else {
-					t.Logf("Fault is CnsAlreadyRegisteredFault. backingDiskURLPath: %q is already registered", backingDiskURLPath)
-				}
-			}
-		}
-
-		// Test QueryVolume API
-		var queryFilter cnstypes.CnsQueryFilter
-		var volumeIDList []cnstypes.CnsVolumeId
-		volumeIDList = append(volumeIDList, cnstypes.CnsVolumeId{Id: volumeID})
-		queryFilter.VolumeIds = volumeIDList
-		t.Logf("Calling QueryVolume using queryFilter: %+v", pretty.Sprint(queryFilter))
-		queryResult, err := cnsClient.QueryVolume(ctx, queryFilter)
-		if err != nil {
-			t.Errorf("Failed to query volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		t.Logf("Successfully Queried Volumes. queryResult: %+v", pretty.Sprint(queryResult))
-
-		t.Logf("Deleting CNS volume created above using BACKING_DISK_URL_PATH: %s with volume: %+v", backingDiskURLPath, volumeIDList)
-		deleteTask, err = cnsClient.DeleteVolume(ctx, volumeIDList, true)
-		if err != nil {
-			t.Errorf("Failed to delete volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		deleteTaskInfo, err = GetTaskInfo(ctx, deleteTask)
-		if err != nil {
-			t.Errorf("Failed to delete volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		deleteTaskResult, err = GetTaskResult(ctx, deleteTaskInfo)
-		if err != nil {
-			t.Errorf("Failed to delete volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		if deleteTaskResult == nil {
-			t.Fatalf("Empty delete task results")
-			t.FailNow()
-		}
-		deleteVolumeOperationRes = deleteTaskResult.GetCnsVolumeOperationResult()
-		if deleteVolumeOperationRes.Fault != nil {
-			t.Fatalf("Failed to delete volume: fault=%+v", deleteVolumeOperationRes.Fault)
-		}
-		t.Logf("volume:%q deleted sucessfully", volumeID)
-	}
-
-	// Test CnsReconfigVolumePolicy API
-	if spbmPolicyId4Reconfig != "" {
-		var cnsVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
-		cnsVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
-			Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0-1",
-			VolumeType: string(cnstypes.CnsVolumeTypeBlock),
-			Datastores: dsList,
-			Metadata: cnstypes.CnsVolumeMetadata{
-				ContainerCluster: containerCluster,
-			},
-			BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
-				CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
-					CapacityInMb: 5120,
-				},
-			},
-		}
-		cnsVolumeCreateSpecList = append(cnsVolumeCreateSpecList, cnsVolumeCreateSpec)
-		t.Logf("Creating volume using the spec: %+v", pretty.Sprint(cnsVolumeCreateSpecList))
-		createTask, err = cnsClient.CreateVolume(ctx, cnsVolumeCreateSpecList)
-		if err != nil {
-			t.Errorf("Failed to create volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		createTaskInfo, err = GetTaskInfo(ctx, createTask)
-		if err != nil {
-			t.Errorf("Failed to create volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		createTaskResult, err = GetTaskResult(ctx, createTaskInfo)
-		if err != nil {
-			t.Errorf("Failed to create volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		if createTaskResult == nil {
-			t.Fatalf("Empty create task results")
-			t.FailNow()
-		}
-		createVolumeOperationRes = createTaskResult.GetCnsVolumeOperationResult()
-		if createVolumeOperationRes.Fault != nil {
-			t.Fatalf("Failed to create volume: fault=%+v", createVolumeOperationRes.Fault)
-		}
-		volumeId = createVolumeOperationRes.VolumeId.Id
-		volumeCreateResult = (createTaskResult).(*cnstypes.CnsVolumeCreateResult)
-		t.Logf("volumeCreateResult %+v", volumeCreateResult)
-		t.Logf("Volume created sucessfully. volumeId: %s", volumeId)
-
-		t.Logf("Calling reconfigpolicy on volume %v with policy %+v \n", volumeId, spbmPolicyId4Reconfig)
-		reconfigSpecs := []cnstypes.CnsVolumePolicyReconfigSpec{
-			{
-				VolumeId: createVolumeOperationRes.VolumeId,
-				Profile: []vim25types.BaseVirtualMachineProfileSpec{
-					&vim25types.VirtualMachineDefinedProfileSpec{
-						ProfileId: spbmPolicyId4Reconfig,
-					},
-				},
-			},
-		}
-		reconfigTask, err := cnsClient.ReconfigVolumePolicy(ctx, reconfigSpecs)
-		if err != nil {
-			t.Errorf("Failed to reconfig policy %v on volume %v. Error: %+v \n", spbmPolicyId4Reconfig, volumeId, err)
-			t.Fatal(err)
-		}
-		reconfigTaskInfo, err := GetTaskInfo(ctx, reconfigTask)
-		if err != nil {
-			t.Errorf("Failed to reconfig volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		reconfigTaskResult, err := GetTaskResult(ctx, reconfigTaskInfo)
-		if err != nil {
-			t.Errorf("Failed to reconfig volume. Error: %+v \n", err)
-			t.Fatal(err)
-		}
-		if reconfigTaskResult == nil {
-			t.Fatalf("Empty reconfig task results")
-			t.FailNow()
-		}
-		reconfigVolumeOperationRes := reconfigTaskResult.GetCnsVolumeOperationResult()
-		if reconfigVolumeOperationRes.Fault != nil {
-			t.Fatalf("Failed to reconfig volume %v with policy %v: fault=%+v",
-				volumeId, spbmPolicyId4Reconfig, reconfigVolumeOperationRes.Fault)
-		}
-		t.Logf("reconfigpolicy on volume %v with policy %+v successful\n", volumeId, spbmPolicyId4Reconfig)
-	}
-
-	// Test CnsSyncDatastore API
-	t.Logf("Calling syncDatastore on %v ...\n", dsUrl)
-	syncDatastoreTask, err := cnsClient.SyncDatastore(ctx, dsUrl, false)
-	if err != nil {
-		t.Errorf("Failed to sync datastore %v. Error: %+v \n", dsUrl, err)
-		t.Fatal(err)
-	}
-	syncDatastoreTaskInfo, err := GetTaskInfo(ctx, syncDatastoreTask)
-	if err != nil {
-		t.Errorf("Failed to get sync datastore taskInfo. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	if syncDatastoreTaskInfo.State != vim25types.TaskInfoStateSuccess {
-		t.Errorf("Failed to sync datastore. Error: %+v \n", syncDatastoreTaskInfo.Error)
-		t.Fatalf("%+v", syncDatastoreTaskInfo.Error)
-	}
-	t.Logf("syncDatastore on %v successful\n", dsUrl)
-
-	t.Logf("Calling syncDatastore on %v with fullsync...\n", dsUrl)
-	syncDatastoreTask, err = cnsClient.SyncDatastore(ctx, dsUrl, true)
-	if err != nil {
-		t.Errorf("Failed to sync datastore %v with full sync. Error: %+v \n", dsUrl, err)
-		t.Fatal(err)
-	}
-	syncDatastoreTaskInfo, err = GetTaskInfo(ctx, syncDatastoreTask)
-	if err != nil {
-		t.Errorf("Failed to get sync datastore taskInfo with full sync. Error: %+v \n", err)
-		t.Fatal(err)
-	}
-	if syncDatastoreTaskInfo.State != vim25types.TaskInfoStateSuccess {
-		t.Errorf("Failed to sync datastore with full sync. Error: %+v \n", syncDatastoreTaskInfo.Error)
-		t.Fatalf("%+v", syncDatastoreTaskInfo.Error)
-	}
-	t.Logf("syncDatastore on %v with full sync successful\n", dsUrl)
+	//if run_fileshare_tests == "true" && cnsClient.Version != ReleaseVSAN67u3 {
+	//	// Test creating vSAN file-share Volume
+	//	var cnsFileVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
+	//	vSANFileCreateSpec := &cnstypes.CnsVSANFileCreateSpec{
+	//		SoftQuotaInMb: 5120,
+	//		Permission: []vsanfstypes.VsanFileShareNetPermission{
+	//			{
+	//				Ips:         "*",
+	//				Permissions: vsanfstypes.VsanFileShareAccessTypeREAD_WRITE,
+	//				AllowRoot:   true,
+	//			},
+	//		},
+	//	}
+	//
+	//	cnsFileVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
+	//		Name:       "pvc-file-share-volume",
+	//		VolumeType: string(cnstypes.CnsVolumeTypeFile),
+	//		Datastores: dsList,
+	//		Metadata: cnstypes.CnsVolumeMetadata{
+	//			ContainerCluster:      containerCluster,
+	//			ContainerClusterArray: containerClusterArray,
+	//		},
+	//		BackingObjectDetails: &cnstypes.CnsVsanFileShareBackingDetails{
+	//			CnsFileBackingDetails: cnstypes.CnsFileBackingDetails{
+	//				CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
+	//					CapacityInMb: 5120,
+	//				},
+	//			},
+	//		},
+	//		CreateSpec: vSANFileCreateSpec,
+	//	}
+	//	cnsFileVolumeCreateSpecList = append(cnsFileVolumeCreateSpecList, cnsFileVolumeCreateSpec)
+	//	t.Logf("Creating CNS file volume using the spec: %+v", cnsFileVolumeCreateSpec)
+	//	createTask, err = cnsClient.CreateVolume(ctx, cnsFileVolumeCreateSpecList)
+	//	if err != nil {
+	//		t.Errorf("Failed to create vsan fileshare volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	createTaskInfo, err = GetTaskInfo(ctx, createTask)
+	//	if err != nil {
+	//		t.Errorf("Failed to create Fileshare volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	createTaskResult, err = GetTaskResult(ctx, createTaskInfo)
+	//	if err != nil {
+	//		t.Errorf("Failed to create Fileshare volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	if createTaskResult == nil {
+	//		t.Fatalf("Empty create task results")
+	//		t.FailNow()
+	//	}
+	//	createVolumeOperationRes = createTaskResult.GetCnsVolumeOperationResult()
+	//	if createVolumeOperationRes.Fault != nil {
+	//		t.Fatalf("Failed to create Fileshare volume: fault=%+v", createVolumeOperationRes.Fault)
+	//	}
+	//	filevolumeId := createVolumeOperationRes.VolumeId.Id
+	//	t.Logf("Fileshare volume created sucessfully. filevolumeId: %s", filevolumeId)
+	//
+	//	// Test QueryVolume API
+	//	volumeIDList = []cnstypes.CnsVolumeId{{Id: filevolumeId}}
+	//	queryFilter.VolumeIds = volumeIDList
+	//	t.Logf("Calling QueryVolume using queryFilter: %+v", queryFilter)
+	//	queryResult, err = cnsClient.QueryVolume(ctx, queryFilter)
+	//	if err != nil {
+	//		t.Errorf("Failed to query volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	t.Logf("Successfully Queried Volumes. queryResult: %+v", queryResult)
+	//	fileBackingInfo := queryResult.Volumes[0].BackingObjectDetails.(*cnstypes.CnsVsanFileShareBackingDetails)
+	//	t.Logf("File Share Name: %s with accessPoints: %+v", fileBackingInfo.Name, fileBackingInfo.AccessPoints)
+	//
+	//	// Test add read-only permissions using Configure ACLs
+	//	netPerms := make([]vsanfstypes.VsanFileShareNetPermission, 0)
+	//	netPerms = append(netPerms, vsanfstypes.VsanFileShareNetPermission{
+	//		Ips:         "192.168.124.2",
+	//		Permissions: "READ_ONLY",
+	//	})
+	//
+	//	vSanNFSACLEntry := make([]cnstypes.CnsNFSAccessControlSpec, 0)
+	//	vSanNFSACLEntry = append(vSanNFSACLEntry, cnstypes.CnsNFSAccessControlSpec{
+	//		Permission: netPerms,
+	//	})
+	//
+	//	volumeID := cnstypes.CnsVolumeId{
+	//		Id: filevolumeId,
+	//	}
+	//	aclSpec := cnstypes.CnsVolumeACLConfigureSpec{
+	//		VolumeId:              volumeID,
+	//		AccessControlSpecList: vSanNFSACLEntry,
+	//	}
+	//	t.Logf("Invoking ConfigureVolumeACLs using the spec: %+v", pretty.Sprint(aclSpec))
+	//	aclTask, err := cnsClient.ConfigureVolumeACLs(ctx, aclSpec)
+	//	if err != nil {
+	//		t.Errorf("Failed to configure VolumeACLs. Error: %+v", err)
+	//		t.Fatal(err)
+	//	}
+	//	aclTaskInfo, err := GetTaskInfo(ctx, aclTask)
+	//	if err != nil {
+	//		t.Errorf("Failed to configure VolumeACLs. Error: %+v", err)
+	//		t.Fatal(err)
+	//	}
+	//	aclTaskResult, err := GetTaskResult(ctx, aclTaskInfo)
+	//	if err != nil {
+	//		t.Errorf("Failed to configure VolumeACLs. Error: %+v", err)
+	//		t.Fatal(err)
+	//	}
+	//	if aclTaskResult == nil {
+	//		t.Fatalf("Empty configure VolumeACLs task results")
+	//		t.FailNow()
+	//	}
+	//
+	//	// Test to revoke all permissions using Configure ACLs
+	//	netPerms = make([]vsanfstypes.VsanFileShareNetPermission, 0)
+	//	netPerms = append(netPerms, vsanfstypes.VsanFileShareNetPermission{
+	//		Ips:         "192.168.124.2",
+	//		Permissions: "READ_ONLY",
+	//	})
+	//
+	//	vSanNFSACLEntry = make([]cnstypes.CnsNFSAccessControlSpec, 0)
+	//	vSanNFSACLEntry = append(vSanNFSACLEntry, cnstypes.CnsNFSAccessControlSpec{
+	//		Permission: netPerms,
+	//		Delete:     true,
+	//	})
+	//
+	//	aclSpec = cnstypes.CnsVolumeACLConfigureSpec{
+	//		VolumeId:              volumeID,
+	//		AccessControlSpecList: vSanNFSACLEntry,
+	//	}
+	//	t.Logf("Invoking ConfigureVolumeACLs using the spec: %+v", pretty.Sprint(aclSpec))
+	//	aclTask, err = cnsClient.ConfigureVolumeACLs(ctx, aclSpec)
+	//	if err != nil {
+	//		t.Errorf("Failed to configure VolumeACLs. Error: %+v", err)
+	//		t.Fatal(err)
+	//	}
+	//	aclTaskInfo, err = GetTaskInfo(ctx, aclTask)
+	//	if err != nil {
+	//		t.Errorf("Failed to configure VolumeACLs. Error: %+v", err)
+	//		t.Fatal(err)
+	//	}
+	//	aclTaskResult, err = GetTaskResult(ctx, aclTaskInfo)
+	//	if err != nil {
+	//		t.Errorf("Failed to configure VolumeACLs. Error: %+v", err)
+	//		t.Fatal(err)
+	//	}
+	//	if aclTaskResult == nil {
+	//		t.Fatalf("Empty configure VolumeACLs task results")
+	//		t.FailNow()
+	//	}
+	//
+	//	// Test Deleting vSAN file-share Volume
+	//	var fileVolumeIDList []cnstypes.CnsVolumeId
+	//	fileVolumeIDList = append(fileVolumeIDList, cnstypes.CnsVolumeId{Id: filevolumeId})
+	//	t.Logf("Deleting fileshare volume: %+v", fileVolumeIDList)
+	//	deleteTask, err = cnsClient.DeleteVolume(ctx, fileVolumeIDList, true)
+	//	if err != nil {
+	//		t.Errorf("Failed to delete fileshare volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	deleteTaskInfo, err = GetTaskInfo(ctx, deleteTask)
+	//	if err != nil {
+	//		t.Errorf("Failed to delete fileshare volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	deleteTaskResult, err = GetTaskResult(ctx, deleteTaskInfo)
+	//	if err != nil {
+	//		t.Errorf("Failed to delete fileshare volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	if deleteTaskResult == nil {
+	//		t.Fatalf("Empty delete task results")
+	//		t.FailNow()
+	//	}
+	//	deleteVolumeOperationRes = deleteTaskResult.GetCnsVolumeOperationResult()
+	//	if deleteVolumeOperationRes.Fault != nil {
+	//		t.Fatalf("Failed to delete fileshare volume: fault=%+v", deleteVolumeOperationRes.Fault)
+	//	}
+	//	t.Logf("fileshare volume:%q deleted sucessfully", filevolumeId)
+	//}
+	//if backingDiskURLPath != "" && cnsClient.Version != ReleaseVSAN67u3 && cnsClient.Version != ReleaseVSAN70 {
+	//	// Test CreateVolume API with existing VMDK
+	//	var cnsVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
+	//	cnsVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
+	//		Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0",
+	//		VolumeType: string(cnstypes.CnsVolumeTypeBlock),
+	//		Metadata: cnstypes.CnsVolumeMetadata{
+	//			ContainerCluster: containerCluster,
+	//		},
+	//		BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
+	//			BackingDiskUrlPath: backingDiskURLPath,
+	//		},
+	//	}
+	//	cnsVolumeCreateSpecList = append(cnsVolumeCreateSpecList, cnsVolumeCreateSpec)
+	//	t.Logf("Creating volume using the spec: %+v", pretty.Sprint(cnsVolumeCreateSpec))
+	//	createTask, err := cnsClient.CreateVolume(ctx, cnsVolumeCreateSpecList)
+	//	if err != nil {
+	//		t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	createTaskInfo, err := GetTaskInfo(ctx, createTask)
+	//	if err != nil {
+	//		t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	createTaskResult, err := GetTaskResult(ctx, createTaskInfo)
+	//	if err != nil {
+	//		t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	if createTaskResult == nil {
+	//		t.Fatalf("Empty create task results")
+	//		t.FailNow()
+	//	}
+	//	createVolumeOperationRes := createTaskResult.GetCnsVolumeOperationResult()
+	//	var volumeID string
+	//	if createVolumeOperationRes.Fault != nil {
+	//		t.Logf("Failed to create volume: fault=%+v", createVolumeOperationRes.Fault)
+	//		fault, ok := createVolumeOperationRes.Fault.Fault.(cnstypes.CnsAlreadyRegisteredFault)
+	//		if !ok {
+	//			t.Fatalf("Fault is not CnsAlreadyRegisteredFault")
+	//		} else {
+	//			t.Logf("Fault is CnsAlreadyRegisteredFault. backingDiskURLPath: %s is already registered", backingDiskURLPath)
+	//			volumeID = fault.VolumeId.Id
+	//		}
+	//	} else {
+	//		volumeID = createVolumeOperationRes.VolumeId.Id
+	//		t.Logf("Volume created sucessfully with backingDiskURLPath: %s. volumeId: %s", backingDiskURLPath, volumeID)
+	//
+	//		// Test re creating volume using BACKING_DISK_URL_PATH
+	//		var reCreateCnsVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
+	//		reCreateCnsVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
+	//			Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0",
+	//			VolumeType: string(cnstypes.CnsVolumeTypeBlock),
+	//			Metadata: cnstypes.CnsVolumeMetadata{
+	//				ContainerCluster: containerCluster,
+	//			},
+	//			BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
+	//				BackingDiskUrlPath: backingDiskURLPath,
+	//			},
+	//		}
+	//
+	//		reCreateCnsVolumeCreateSpecList = append(reCreateCnsVolumeCreateSpecList, reCreateCnsVolumeCreateSpec)
+	//		t.Logf("Creating volume using the spec: %+v", pretty.Sprint(reCreateCnsVolumeCreateSpec))
+	//		recreateTask, err := cnsClient.CreateVolume(ctx, reCreateCnsVolumeCreateSpecList)
+	//		if err != nil {
+	//			t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//			t.Fatal(err)
+	//		}
+	//		reCreateTaskInfo, err := GetTaskInfo(ctx, recreateTask)
+	//		if err != nil {
+	//			t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//			t.Fatal(err)
+	//		}
+	//		reCreateTaskResult, err := GetTaskResult(ctx, reCreateTaskInfo)
+	//		if err != nil {
+	//			t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//			t.Fatal(err)
+	//		}
+	//		if reCreateTaskResult == nil {
+	//			t.Fatalf("Empty create task results")
+	//			t.FailNow()
+	//		}
+	//		reCreateVolumeOperationRes := reCreateTaskResult.GetCnsVolumeOperationResult()
+	//		t.Logf("reCreateVolumeOperationRes.: %+v", pretty.Sprint(reCreateVolumeOperationRes))
+	//		if reCreateVolumeOperationRes.Fault != nil {
+	//			t.Logf("Failed to create volume: fault=%+v", reCreateVolumeOperationRes.Fault)
+	//			_, ok := reCreateVolumeOperationRes.Fault.Fault.(cnstypes.CnsAlreadyRegisteredFault)
+	//			if !ok {
+	//				t.Fatalf("Fault is not CnsAlreadyRegisteredFault")
+	//			} else {
+	//				t.Logf("Fault is CnsAlreadyRegisteredFault. backingDiskURLPath: %q is already registered", backingDiskURLPath)
+	//			}
+	//		}
+	//	}
+	//
+	//	// Test QueryVolume API
+	//	var queryFilter cnstypes.CnsQueryFilter
+	//	var volumeIDList []cnstypes.CnsVolumeId
+	//	volumeIDList = append(volumeIDList, cnstypes.CnsVolumeId{Id: volumeID})
+	//	queryFilter.VolumeIds = volumeIDList
+	//	t.Logf("Calling QueryVolume using queryFilter: %+v", pretty.Sprint(queryFilter))
+	//	queryResult, err := cnsClient.QueryVolume(ctx, queryFilter)
+	//	if err != nil {
+	//		t.Errorf("Failed to query volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	t.Logf("Successfully Queried Volumes. queryResult: %+v", pretty.Sprint(queryResult))
+	//
+	//	t.Logf("Deleting CNS volume created above using BACKING_DISK_URL_PATH: %s with volume: %+v", backingDiskURLPath, volumeIDList)
+	//	deleteTask, err = cnsClient.DeleteVolume(ctx, volumeIDList, true)
+	//	if err != nil {
+	//		t.Errorf("Failed to delete volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	deleteTaskInfo, err = GetTaskInfo(ctx, deleteTask)
+	//	if err != nil {
+	//		t.Errorf("Failed to delete volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	deleteTaskResult, err = GetTaskResult(ctx, deleteTaskInfo)
+	//	if err != nil {
+	//		t.Errorf("Failed to delete volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	if deleteTaskResult == nil {
+	//		t.Fatalf("Empty delete task results")
+	//		t.FailNow()
+	//	}
+	//	deleteVolumeOperationRes = deleteTaskResult.GetCnsVolumeOperationResult()
+	//	if deleteVolumeOperationRes.Fault != nil {
+	//		t.Fatalf("Failed to delete volume: fault=%+v", deleteVolumeOperationRes.Fault)
+	//	}
+	//	t.Logf("volume:%q deleted sucessfully", volumeID)
+	//}
+	//
+	//// Test CnsReconfigVolumePolicy API
+	//if spbmPolicyId4Reconfig != "" {
+	//	var cnsVolumeCreateSpecList []cnstypes.CnsVolumeCreateSpec
+	//	cnsVolumeCreateSpec := cnstypes.CnsVolumeCreateSpec{
+	//		Name:       "pvc-901e87eb-c2bd-11e9-806f-005056a0c9a0-1",
+	//		VolumeType: string(cnstypes.CnsVolumeTypeBlock),
+	//		Datastores: dsList,
+	//		Metadata: cnstypes.CnsVolumeMetadata{
+	//			ContainerCluster: containerCluster,
+	//		},
+	//		BackingObjectDetails: &cnstypes.CnsBlockBackingDetails{
+	//			CnsBackingObjectDetails: cnstypes.CnsBackingObjectDetails{
+	//				CapacityInMb: 5120,
+	//			},
+	//		},
+	//	}
+	//	cnsVolumeCreateSpecList = append(cnsVolumeCreateSpecList, cnsVolumeCreateSpec)
+	//	t.Logf("Creating volume using the spec: %+v", pretty.Sprint(cnsVolumeCreateSpecList))
+	//	createTask, err = cnsClient.CreateVolume(ctx, cnsVolumeCreateSpecList)
+	//	if err != nil {
+	//		t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	createTaskInfo, err = GetTaskInfo(ctx, createTask)
+	//	if err != nil {
+	//		t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	createTaskResult, err = GetTaskResult(ctx, createTaskInfo)
+	//	if err != nil {
+	//		t.Errorf("Failed to create volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	if createTaskResult == nil {
+	//		t.Fatalf("Empty create task results")
+	//		t.FailNow()
+	//	}
+	//	createVolumeOperationRes = createTaskResult.GetCnsVolumeOperationResult()
+	//	if createVolumeOperationRes.Fault != nil {
+	//		t.Fatalf("Failed to create volume: fault=%+v", createVolumeOperationRes.Fault)
+	//	}
+	//	volumeId = createVolumeOperationRes.VolumeId.Id
+	//	volumeCreateResult = (createTaskResult).(*cnstypes.CnsVolumeCreateResult)
+	//	t.Logf("volumeCreateResult %+v", volumeCreateResult)
+	//	t.Logf("Volume created sucessfully. volumeId: %s", volumeId)
+	//
+	//	t.Logf("Calling reconfigpolicy on volume %v with policy %+v \n", volumeId, spbmPolicyId4Reconfig)
+	//	reconfigSpecs := []cnstypes.CnsVolumePolicyReconfigSpec{
+	//		{
+	//			VolumeId: createVolumeOperationRes.VolumeId,
+	//			Profile: []vim25types.BaseVirtualMachineProfileSpec{
+	//				&vim25types.VirtualMachineDefinedProfileSpec{
+	//					ProfileId: spbmPolicyId4Reconfig,
+	//				},
+	//			},
+	//		},
+	//	}
+	//	reconfigTask, err := cnsClient.ReconfigVolumePolicy(ctx, reconfigSpecs)
+	//	if err != nil {
+	//		t.Errorf("Failed to reconfig policy %v on volume %v. Error: %+v \n", spbmPolicyId4Reconfig, volumeId, err)
+	//		t.Fatal(err)
+	//	}
+	//	reconfigTaskInfo, err := GetTaskInfo(ctx, reconfigTask)
+	//	if err != nil {
+	//		t.Errorf("Failed to reconfig volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	reconfigTaskResult, err := GetTaskResult(ctx, reconfigTaskInfo)
+	//	if err != nil {
+	//		t.Errorf("Failed to reconfig volume. Error: %+v \n", err)
+	//		t.Fatal(err)
+	//	}
+	//	if reconfigTaskResult == nil {
+	//		t.Fatalf("Empty reconfig task results")
+	//		t.FailNow()
+	//	}
+	//	reconfigVolumeOperationRes := reconfigTaskResult.GetCnsVolumeOperationResult()
+	//	if reconfigVolumeOperationRes.Fault != nil {
+	//		t.Fatalf("Failed to reconfig volume %v with policy %v: fault=%+v",
+	//			volumeId, spbmPolicyId4Reconfig, reconfigVolumeOperationRes.Fault)
+	//	}
+	//	t.Logf("reconfigpolicy on volume %v with policy %+v successful\n", volumeId, spbmPolicyId4Reconfig)
+	//}
+	//
+	//// Test CnsSyncDatastore API
+	//t.Logf("Calling syncDatastore on %v ...\n", dsUrl)
+	//syncDatastoreTask, err := cnsClient.SyncDatastore(ctx, dsUrl, false)
+	//if err != nil {
+	//	t.Errorf("Failed to sync datastore %v. Error: %+v \n", dsUrl, err)
+	//	t.Fatal(err)
+	//}
+	//syncDatastoreTaskInfo, err := GetTaskInfo(ctx, syncDatastoreTask)
+	//if err != nil {
+	//	t.Errorf("Failed to get sync datastore taskInfo. Error: %+v \n", err)
+	//	t.Fatal(err)
+	//}
+	//if syncDatastoreTaskInfo.State != vim25types.TaskInfoStateSuccess {
+	//	t.Errorf("Failed to sync datastore. Error: %+v \n", syncDatastoreTaskInfo.Error)
+	//	t.Fatalf("%+v", syncDatastoreTaskInfo.Error)
+	//}
+	//t.Logf("syncDatastore on %v successful\n", dsUrl)
+	//
+	//t.Logf("Calling syncDatastore on %v with fullsync...\n", dsUrl)
+	//syncDatastoreTask, err = cnsClient.SyncDatastore(ctx, dsUrl, true)
+	//if err != nil {
+	//	t.Errorf("Failed to sync datastore %v with full sync. Error: %+v \n", dsUrl, err)
+	//	t.Fatal(err)
+	//}
+	//syncDatastoreTaskInfo, err = GetTaskInfo(ctx, syncDatastoreTask)
+	//if err != nil {
+	//	t.Errorf("Failed to get sync datastore taskInfo with full sync. Error: %+v \n", err)
+	//	t.Fatal(err)
+	//}
+	//if syncDatastoreTaskInfo.State != vim25types.TaskInfoStateSuccess {
+	//	t.Errorf("Failed to sync datastore with full sync. Error: %+v \n", syncDatastoreTaskInfo.Error)
+	//	t.Fatalf("%+v", syncDatastoreTaskInfo.Error)
+	//}
+	//t.Logf("syncDatastore on %v with full sync successful\n", dsUrl)
 }
 
 // isvSphereVersion70U3orAbove checks if specified version is 7.0 Update 3 or higher
