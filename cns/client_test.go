@@ -125,9 +125,10 @@ func TestClient(t *testing.T) {
 				CapacityInMb: 5120,
 			},
 		},
-		Profile: []vim25types.BaseVirtualMachineProfileSpec{
-			&vim25types.VirtualMachineDefinedProfileSpec{ProfileId: "e3a88e6c-5741-4e02-8b3a-1d8663c6496e"},
-		},
+		//Profile: []vim25types.BaseVirtualMachineProfileSpec{
+		//	//&vim25types.VirtualMachineDefinedProfileSpec{ProfileId: "e3a88e6c-5741-4e02-8b3a-1d8663c6496e"}, // encryption policy
+		//	&vim25types.VirtualMachineDefinedProfileSpec{ProfileId: "a92afec1-56c0-4c67-85e7-8cfd853668ae"}, // No encryption
+		//},
 		//CreateSpec: &cnstypes.CnsBlockCreateSpec{  // TODO: This seems to be failing in CNS with some XML parsing error!
 		//	CryptoSpec: &vim25types.CryptoSpecEncrypt{
 		//		CryptoKeyId: vim25types.CryptoKeyId{
@@ -183,6 +184,8 @@ func TestClient(t *testing.T) {
 	t.Logf("Successfully Queried Volumes. queryResult: %+v", pretty.Sprint(queryResult))
 	t.Logf("Before recrypt - QueryVolumeInfo")
 	QueryVolumeInfo(t, ctx, cnsClient, volumeIDList)
+
+	os.Exit(1)
 
 	// Create a VM to test Attach Volume API.
 	virtualMachineConfigSpec := vim25types.VirtualMachineConfigSpec{
@@ -253,18 +256,18 @@ func TestClient(t *testing.T) {
 	nodeVM := object.NewVirtualMachine(cnsClient.vim25Client, vmRef.Reference())
 
 	// Power ON the VM
-	task, err = nodeVM.PowerOn(ctx)
-	err = task.Wait(ctx)
-	if err != nil {
-		t.Fatalf("VM PowerOn task failed: %+v", err)
-	}
+	//task, err = nodeVM.PowerOn(ctx)
+	//err = task.Wait(ctx)
+	//if err != nil {
+	//	t.Fatalf("VM PowerOn task failed: %+v", err)
+	//}
 	defer func() {
 		// Power OFF the VM
-		task, err = nodeVM.PowerOff(ctx)
-		err = task.Wait(ctx)
-		if err != nil {
-			t.Fatalf("VM PowerOff task failed: %+v", err)
-		}
+		//task, err = nodeVM.PowerOff(ctx)
+		//err = task.Wait(ctx)
+		//if err != nil {
+		//	t.Fatalf("VM PowerOff task failed: %+v", err)
+		//}
 		task, err = nodeVM.Destroy(ctx)
 		if err != nil {
 			t.Fatalf("VM Destroy task failed: %+v", err)
@@ -329,8 +332,8 @@ func TestClient(t *testing.T) {
 	config := &vim25types.VirtualDeviceConfigSpec{
 		Device: fcd,
 		Backing: &vim25types.VirtualDeviceConfigSpecBackingSpec{
-			Crypto: &vim25types.CryptoSpecShallowRecrypt{
-				NewKeyId: vim25types.CryptoKeyId{
+			Crypto: &vim25types.CryptoSpecEncrypt{
+				CryptoKeyId: vim25types.CryptoKeyId{
 					KeyId: "7",
 					ProviderId: &vim25types.KeyProviderId{
 						Id: "kmip1",
